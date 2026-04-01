@@ -88,11 +88,6 @@ npm run dev
 
 ---
 
-## ⚠️ Security Notice
-
-**Never commit `.env` files.** They contain secrets (JWT keys, encryption keys, SMTP credentials). The `.gitignore` is configured to exclude them.
-
----
 
 ## 📄 License
 
