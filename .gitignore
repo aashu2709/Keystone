@@ -1,0 +1,71 @@
+# ========================
+# Environment & Secrets
+# ========================
+.env
+.env.local
+.env.production
+*.pem
+*.key
+
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ========================
+# Node.js / Frontend
+# ========================
+node_modules/
+frontend/dist/
+frontend/.cache/
+.cache/
+*.tsbuildinfo
+
+# ========================
+# Logs
+# ========================
+logs/
+*.log
+npm-debug.log*
+
+# ========================
+# IDE / Editor
+# ========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ========================
+# OS Generated
+# ========================
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# ========================
+# Testing
+# ========================
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# ========================
+# Misc
+# ========================
+*.bak
+*.tmp
