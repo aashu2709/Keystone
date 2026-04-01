@@ -1,8 +1,8 @@
-# 🔐 ServerCore
+# 🔐 Keystone
 
-> On-Prem Server Governance & Credential Management Platform — for organizations without Active Directory.
+> Self-hosted server governance & credential management platform for on-prem environments without Active Directory.
 
-ServerCore is a self-hosted web platform that gives IT teams a single dashboard to manage server credentials, user access, and compliance — without needing Active Directory or expensive enterprise PAM tools.
+Keystone is a self-hosted web platform that gives IT teams a single dashboard to manage server credentials, user access, and compliance — without needing Active Directory or expensive enterprise PAM tools.
 
 ---
 
