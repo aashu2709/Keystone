@@ -74,17 +74,6 @@ npm run dev
 
 ---
 
-## 📋 Roadmap
-
-- [ ] Linux server support (SSH)
-- [ ] Credential vault (shared password manager)
-- [ ] Just-In-Time (JIT) temporary access
-- [ ] Server inventory dashboard
-- [ ] MFA / TOTP for portal access
-- [ ] Security posture scoring
-- [ ] Secret rotation automation
-- [ ] Multi-tenancy (MSP support)
-- [ ] API access + webhooks
 
 ---
 
