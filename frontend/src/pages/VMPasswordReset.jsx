@@ -400,8 +400,8 @@ const VMPasswordReset = () => {
                 {selectedVm ? (
                   <span className="flex items-center gap-2">
                     <Server size={15} className="text-primary-600 flex-shrink-0" />
-                    <span className="font-medium text-gray-800">{selectedVm.name}</span>
-                    <span className="text-gray-400 text-sm">({selectedVm.ip_address})</span>
+                    <span className="font-bold text-gray-800">{selectedVm.name}</span>
+                    <span className="text-gray-400 text-xs font-mono tracking-tight">({selectedVm.ip_address})</span>
                   </span>
                 ) : (
                   <span className="text-gray-400">-- Select a VM --</span>
@@ -435,7 +435,7 @@ const VMPasswordReset = () => {
                         onChange={e => { setVmSearch(e.target.value); setHighlightedIndex(0); }}
                         onKeyDown={handleDropdownKeyDown}
                         placeholder="Search by name or IP address…"
-                        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       />
                     </div>
                     <p className="text-xs text-gray-400 mt-1.5 ml-0.5">
@@ -458,10 +458,10 @@ const VMPasswordReset = () => {
                             <Server size={16} className={highlightedIndex === idx ? 'text-primary-600' : 'text-gray-500'} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className={`font-medium text-sm truncate ${highlightedIndex === idx ? 'text-primary-700' : 'text-gray-800'}`}>
+                            <p className={`truncate font-bold ${highlightedIndex === idx ? 'text-primary-700' : 'text-gray-800'}`}>
                               {vm.name}
                             </p>
-                            <p className="text-xs text-gray-400 truncate">{vm.ip_address}</p>
+                            <p className="text-xs text-gray-400 font-mono tracking-tight truncate">{vm.ip_address}</p>
                           </div>
                         </li>
                       ))
@@ -480,8 +480,8 @@ const VMPasswordReset = () => {
               <div className="flex items-center gap-3 mb-3">
                 <Server className="text-primary-600" size={24} />
                 <div>
-                  <p className="font-medium text-gray-800">{selectedVm.name}</p>
-                  <p className="text-sm text-gray-500">{selectedVm.ip_address}</p>
+                  <p className="font-bold text-gray-800">{selectedVm.name}</p>
+                  <p className="text-sm font-mono text-gray-500">{selectedVm.ip_address}</p>
                 </div>
               </div>
               <div className="text-sm">

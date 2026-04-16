@@ -31,8 +31,9 @@ from app.services.notification_service import notify_admins_vm_health_change
 from app.scheduler import get_scheduler_status, trigger_job_manually
 
 # Import the check function (make sure it's available)
-from app.services.password_expiry_service import check_user_password_expiry
 from app.database import get_mappings_collection
+from app.services.firewall_service import bulk_add_firewall_rule
+from app.schemas.firewall import FirewallBulkCreateRequest, FirewallBulkResponse
 
 
 
@@ -104,7 +105,7 @@ async def log_admin_action(
 @router.get("/vms", response_model=VMListResponse)
 async def get_all_vms(
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=500),
     search: Optional[str] = None,
     current_user: dict = Depends(require_admin)
 ):
@@ -1020,7 +1021,7 @@ async def delete_mapping(
 @router.get("/users")
 async def get_all_users(
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=500),
     search: Optional[str] = None,
     role: Optional[str] = None,
     current_user: dict = Depends(require_admin)
@@ -1168,7 +1169,7 @@ async def update_user_status(
 @router.get("/audit-logs")
 async def get_audit_logs(
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=500),
     action: Optional[str] = None,
     user_id: Optional[str] = None,
     start_date: Optional[str] = None,
@@ -1385,5 +1386,58 @@ async def check_specific_user_expiry(
         "never_expires": result.get("never_expires", False),
         "raw_data": result
     }
+
+# ===========================================
+# FIREWALL BULK OPERATIONS
+# ===========================================
+
+@router.post("/firewall/bulk-create", response_model=FirewallBulkResponse)
+async def bulk_create_firewall_rule_endpoint(
+    request_data: FirewallBulkCreateRequest,
+    current_user: dict = Depends(require_admin)
+):
+    """
+    Deploy the same firewall rule to multiple VMs in parallel.
+    """
+    vms_collection = get_vms_collection()
+    vm_targets = []
+    
+    # 1. Validate VMs and gather credentials
+    for vm_id in request_data.vm_ids:
+        vm = await vms_collection.find_one({"id": vm_id})
+        if not vm:
+            continue
+            
+        try:
+            admin_pass = decrypt_string(vm.get("admin_password_encrypted", ""))
+            vm_targets.append({
+                "id": vm_id,
+                "ip": vm["ip_address"],
+                "user": vm.get("admin_username", "Administrator"),
+                "pwd": admin_pass
+            })
+        except Exception as e:
+            print(f"❌ Failed to decrypt credentials for VM {vm.get('name')}: {e}")
+            continue
+
+    if not vm_targets:
+        raise HTTPException(
+            status_code=400,
+            detail="No valid VMs found or credentials decryption failed"
+        )
+
+    # 2. Call bulk service
+    results = await bulk_add_firewall_rule(vm_targets, request_data.rule_data.dict())
+    
+    # 3. Calculate summary
+    success_count = sum(1 for r in results if r["success"])
+    failure_count = len(results) - success_count
+    
+    return FirewallBulkResponse(
+        total=len(results),
+        success_count=success_count,
+        failure_count=failure_count,
+        results=results
+    )
 
 

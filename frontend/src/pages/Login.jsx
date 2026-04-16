@@ -87,22 +87,22 @@ const Login = () => {
     try {
       // Login with Math CAPTCHA
       await login(username, password, captchaData.token, captchaData.answer);
-      
+
       // Redirect to original destination or dashboard
       const from = location.state?.from?.pathname || '/dashboard';
       navigate(from, { replace: true });
     } catch (err) {
       if (captchaRef.current) captchaRef.current.refresh();
       const errorMessage = err.message || 'Login failed';
-      
+
       // Check if this is a rate limit error
-      if (errorMessage.toLowerCase().includes('too many') || 
-          errorMessage.toLowerCase().includes('try again in')) {
+      if (errorMessage.toLowerCase().includes('too many') ||
+        errorMessage.toLowerCase().includes('try again in')) {
         setIsRateLimited(true);
-        
+
         // Always start from 60 seconds for consistent UX
         setRateLimitSeconds(60);
-        
+
         // Don't set the original error message, we'll generate our own
         setError('rate_limited');
       } else {
@@ -159,20 +159,20 @@ const Login = () => {
           )}
 
           {error && (
-            <Alert 
-              variant={isRateLimited ? "warning" : "error"} 
-              className="mb-4" 
+            <Alert
+              variant={isRateLimited ? "warning" : "error"}
+              className="mb-4"
               onClose={isRateLimited ? undefined : () => setError('')}
             >
               <div>
                 <span>{getDisplayError()}</span>
               </div>
-              
+
               {/* Progress bar for rate limit */}
               {isRateLimited && rateLimitSeconds > 0 && (
                 <div className="mt-2">
                   <div className="w-full bg-yellow-200 rounded-full h-2">
-                    <div 
+                    <div
                       className="bg-yellow-500 h-2 rounded-full transition-all duration-1000 ease-linear"
                       style={{ width: `${(rateLimitSeconds / 60) * 100}%` }}
                     />
@@ -204,9 +204,9 @@ const Login = () => {
               disabled={isRateLimited}
             />
 
-            <MathCaptcha 
-              ref={captchaRef} 
-              onChange={setCaptchaData} 
+            <MathCaptcha
+              ref={captchaRef}
+              onChange={setCaptchaData}
             />
 
             <Button

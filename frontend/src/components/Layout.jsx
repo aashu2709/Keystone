@@ -18,8 +18,11 @@ import {
   Menu,
   X,
   Users,
+  UserPlus,
   Shield,
   FileText,
+  ShieldAlert,
+  Award,
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
@@ -46,6 +49,9 @@ const Layout = ({ children }) => {
     { path: '/admin/users', icon: Users, label: 'Manage Users' },
     { path: '/admin/vms', icon: Server, label: 'Manage VMs' },
     { path: '/admin/mappings', icon: Shield, label: 'User-VM Mappings' },
+    { path: '/admin/remote-users', icon: UserPlus, label: 'Remote Users' },
+    { path: '/admin/firewall', icon: ShieldAlert, label: 'Firewall Rules' },
+    { path: '/admin/certificates', icon: Award, label: 'Certificates' },
     { path: '/admin/audit', icon: FileText, label: 'Audit Logs' },
   ];
 

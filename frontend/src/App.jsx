@@ -14,7 +14,6 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-
 // User Pages
 import Dashboard from "./pages/Dashboard";
 import MyVMs from "./pages/MyVMs";
@@ -27,6 +26,9 @@ import ManageVMs from "./pages/admin/ManageVMs";
 import ManageMappings from "./pages/admin/ManageMappings";
 import ManageUsers from "./pages/admin/ManageUsers";
 import AuditLogs from "./pages/admin/AuditLogs";
+import ManageRemoteUsers from "./pages/admin/ManageRemoteUsers";
+import ManageFirewall from "./pages/admin/ManageFirewall";
+import ManageCertificates from "./pages/admin/ManageCertificates";
 
 function App() {
   return (
@@ -101,6 +103,9 @@ function App() {
             {/* Reset password - from email link with token */}
             <Route path="/reset-password" element={<ResetPassword />} />
 
+            {/* Home page - Redirected to Dashboard */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
             {/* ============================================ */}
             {/* PROTECTED ROUTES (Authentication required)   */}
             {/* ============================================ */}
@@ -169,6 +174,8 @@ function App() {
             {/* ADMIN ROUTES (Admin role required)           */}
             {/* ============================================ */}
 
+            {/* Admin Dashboard - Removed */}
+
             <Route
               path="/admin/users"
               element={
@@ -213,12 +220,42 @@ function App() {
               }
             />
 
+            <Route
+              path="/admin/remote-users"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <Layout>
+                    <ManageRemoteUsers />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/firewall"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <Layout>
+                    <ManageFirewall />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/certificates"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <Layout>
+                    <ManageCertificates />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
             {/* ============================================ */}
             {/* REDIRECTS                                    */}
             {/* ============================================ */}
-
-            {/* Redirect root to dashboard */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
             {/* Catch all - redirect to dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

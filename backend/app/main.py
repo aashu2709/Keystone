@@ -13,7 +13,8 @@ import logging
 
 from app.config import settings
 from app.database import connect_to_mongodb, close_mongodb_connection
-from app.routers import auth, admin, vms, password, notifications, captcha
+from app.routers import auth, admin, vms, password, notifications, captcha, firewall, certificates
+from app.routers import user_management as user_mgmt_router
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -129,8 +130,11 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(vms.router, prefix="/api")
 app.include_router(password.router, prefix="/api")
+app.include_router(firewall.router, prefix="/api")
+app.include_router(certificates.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
 app.include_router(captcha.router, prefix="/api")
+app.include_router(user_mgmt_router.router, prefix="/api")
 
 
 # ===========================================

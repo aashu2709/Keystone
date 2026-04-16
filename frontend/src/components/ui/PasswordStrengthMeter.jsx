@@ -45,11 +45,11 @@ const RULES = [
 // ─── Strength Level Config ────────────────────────────────────────────────────
 
 const LEVELS = [
-  { label: 'Too Weak',  color: 'bg-red-500',    text: 'text-red-600',    segments: 1 },
-  { label: 'Weak',      color: 'bg-orange-400',  text: 'text-orange-500', segments: 2 },
-  { label: 'Fair',      color: 'bg-yellow-400',  text: 'text-yellow-600', segments: 3 },
-  { label: 'Strong',    color: 'bg-emerald-400', text: 'text-emerald-600', segments: 4 },
-  { label: 'Very Strong', color: 'bg-green-500', text: 'text-green-600',  segments: 5 },
+  { label: 'Too Weak', color: 'bg-red-500', text: 'text-red-600', segments: 1 },
+  { label: 'Weak', color: 'bg-orange-400', text: 'text-orange-500', segments: 2 },
+  { label: 'Fair', color: 'bg-yellow-400', text: 'text-yellow-600', segments: 3 },
+  { label: 'Strong', color: 'bg-emerald-400', text: 'text-emerald-600', segments: 4 },
+  { label: 'Very Strong', color: 'bg-green-500', text: 'text-green-600', segments: 5 },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -110,19 +110,17 @@ const PasswordStrengthMeter = ({ password = '', className = '' }) => {
             ) : (
               <XCircle
                 size={15}
-                className={`flex-shrink-0 transition-colors duration-200 ${
-                  password.length > 0 ? 'text-red-400' : 'text-gray-300'
-                }`}
+                className={`flex-shrink-0 transition-colors duration-200 ${password.length > 0 ? 'text-red-400' : 'text-gray-300'
+                  }`}
               />
             )}
             <span
-              className={`text-xs transition-colors duration-200 ${
-                rule.passed
+              className={`text-xs transition-colors duration-200 ${rule.passed
                   ? 'text-green-700 font-medium'
                   : password.length > 0
-                  ? 'text-gray-600'
-                  : 'text-gray-400'
-              }`}
+                    ? 'text-gray-600'
+                    : 'text-gray-400'
+                }`}
             >
               {rule.label}
             </span>

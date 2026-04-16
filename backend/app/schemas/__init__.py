@@ -50,6 +50,24 @@ from app.schemas.notification import (
     MarkAllReadResponse,
 )
 
+# User Management schemas
+from app.schemas.user_management import (
+    CreateRemoteUserRequest,
+    ManageRemoteUserRequest,
+    VMOperationResult,
+    UserManagementResponse,
+    RemoteUserInfo,
+    ListRemoteUsersResponse,
+    GeneratePasswordResponse,
+)
+
+# Firewall schemas
+from app.schemas.firewall import (
+    FirewallRuleData,
+    FirewallBulkCreateRequest,
+    FirewallBulkResponse,
+)
+
 __all__ = [
     # Auth
     "SignupRequest",
@@ -83,4 +101,16 @@ __all__ = [
     "NotificationCountResponse",
     "MarkAsReadRequest",
     "MarkAllReadResponse",
+    # User Management
+    "CreateRemoteUserRequest",
+    "ManageRemoteUserRequest",
+    "VMOperationResult",
+    "UserManagementResponse",
+    "RemoteUserInfo",
+    "ListRemoteUsersResponse",
+    "GeneratePasswordResponse",
+    # Firewall
+    "FirewallRuleData",
+    "FirewallBulkCreateRequest",
+    "FirewallBulkResponse",
 ]

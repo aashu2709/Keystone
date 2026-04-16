@@ -226,11 +226,11 @@ const AuditLogs = () => {
         skip: (currentPage - 1) * pageSize,
         limit: pageSize,
       };
-      
+
       if (actionFilter) {
         params.action = actionFilter;
       }
-      
+
       const response = await adminAPI.getAuditLogs(params);
       setLogs(response.logs || []);
       setTotal(response.total || 0);
@@ -262,11 +262,11 @@ const AuditLogs = () => {
   // Filter logs by search term (client-side search on loaded data)
   const filteredLogs = searchTerm
     ? logs.filter(log =>
-        log.user_username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.user_full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.action?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        JSON.stringify(log.details || {}).toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      log.user_username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.user_full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.action?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      JSON.stringify(log.details || {}).toLowerCase().includes(searchTerm.toLowerCase())
+    )
     : logs;
 
   return (
@@ -360,7 +360,7 @@ const AuditLogs = () => {
                   const ActionIcon = config.icon;
                   const details = formatDetails(log.details);
                   const isExpanded = expandedRows[log.id];
-                  
+
                   return (
                     <>
                       {/* Main Row */}
@@ -381,7 +381,7 @@ const AuditLogs = () => {
                             </button>
                           )}
                         </td>
-                        
+
                         {/* User */}
                         <td className="py-3 px-4">
                           <div>
@@ -393,7 +393,7 @@ const AuditLogs = () => {
                             </p>
                           </div>
                         </td>
-                        
+
                         {/* Action Badge */}
                         <td className="py-3 px-4">
                           <span
@@ -406,12 +406,12 @@ const AuditLogs = () => {
                             {config.label}
                           </span>
                         </td>
-                        
+
                         {/* Resource */}
                         <td className="py-3 px-4 text-sm text-gray-600">
                           {log.resource_type || '-'}
                         </td>
-                        
+
                         {/* Summary */}
                         <td className="py-3 px-4 text-sm text-gray-600 max-w-xs truncate">
                           {log.details?.vm_name && (
@@ -426,12 +426,12 @@ const AuditLogs = () => {
                           {log.details?.ip_address && (
                             <span>IP: {log.details.ip_address}</span>
                           )}
-                          {!log.details?.vm_name && !log.details?.user_username && 
-                           !log.details?.old_role && !log.details?.ip_address && (
-                            <span className="text-gray-400">-</span>
-                          )}
+                          {!log.details?.vm_name && !log.details?.user_username &&
+                            !log.details?.old_role && !log.details?.ip_address && (
+                              <span className="text-gray-400">-</span>
+                            )}
                         </td>
-                        
+
                         {/* Time */}
                         <td className="py-3 px-4 text-right">
                           <div>
@@ -444,7 +444,7 @@ const AuditLogs = () => {
                           </div>
                         </td>
                       </tr>
-                      
+
                       {/* Expanded Details Row */}
                       {isExpanded && details && (
                         <tr key={`${log.id}-details`} className="bg-gray-50">
@@ -484,27 +484,25 @@ const AuditLogs = () => {
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className={`p-2 rounded-lg border ${
-                  currentPage === 1
+                className={`p-2 rounded-lg border ${currentPage === 1
                     ? 'text-gray-300 border-gray-200 cursor-not-allowed'
                     : 'text-gray-600 border-gray-300 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <ChevronLeft size={18} />
               </button>
-              
+
               <span className="text-sm text-gray-600 px-3">
                 Page {currentPage} of {totalPages}
               </span>
-              
+
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className={`p-2 rounded-lg border ${
-                  currentPage === totalPages
+                className={`p-2 rounded-lg border ${currentPage === totalPages
                     ? 'text-gray-300 border-gray-200 cursor-not-allowed'
                     : 'text-gray-600 border-gray-300 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <ChevronRight size={18} />
               </button>

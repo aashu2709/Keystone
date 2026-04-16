@@ -665,5 +665,140 @@ export const adminAPI = {
   },
 };
 
+// ===========================================
+// REMOTE USER MANAGEMENT API (/api/admin/remote-users)
+// All endpoints require admin role
+// ===========================================
+export const remoteUserAPI = {
+  /**
+   * Create a local user on one or more remote VMs
+   * POST /admin/remote-users/create
+   * @param {Object} data
+   * @param {string} data.username - Local username to create
+   * @param {string} data.full_name - Display name
+   * @param {string} data.password - Initial password
+   * @param {string} data.description - Optional description
+   * @param {string} data.user_type - 'standard' or 'administrator'
+   * @param {boolean} data.must_change_password - Force change at next logon
+   * @param {string[]} data.vm_ids - Array of VM IDs
+   */
+  createUser: async (data) => {
+    const response = await api.post('/admin/remote-users/create', data);
+    return response.data;
+  },
+
+  /**
+   * Disable a user on one or more VMs
+   * POST /admin/remote-users/disable
+   * @param {Object} data - { username, vm_ids }
+   */
+  disableUser: async (data) => {
+    const response = await api.post('/admin/remote-users/disable', data);
+    return response.data;
+  },
+
+  /**
+   * Enable a user on one or more VMs
+   * POST /admin/remote-users/enable
+   * @param {Object} data - { username, vm_ids }
+   */
+  enableUser: async (data) => {
+    const response = await api.post('/admin/remote-users/enable', data);
+    return response.data;
+  },
+
+  /**
+   * Unlock a locked-out user on one or more VMs
+   * POST /admin/remote-users/unlock
+   * @param {Object} data - { username, vm_ids }
+   */
+  unlockUser: async (data) => {
+    const response = await api.post('/admin/remote-users/unlock', data);
+    return response.data;
+  },
+
+  /**
+   * Delete a user from one or more VMs (also removes Keystone mappings)
+   * POST /admin/remote-users/delete
+   * @param {Object} data - { username, vm_ids }
+   */
+  deleteUser: async (data) => {
+    const response = await api.post('/admin/remote-users/delete', data);
+    return response.data;
+  },
+
+  /**
+   * List all local users on a specific VM
+   * GET /admin/remote-users/list/{vmId}
+   * @param {string} vmId - VM UUID
+   */
+  listUsers: async (vmId) => {
+    const response = await api.get(`/admin/remote-users/list/${vmId}`);
+    return response.data;
+  },
+
+  /**
+   * Generate a strong random password
+   * GET /admin/remote-users/generate-password
+   * @param {number} length - Password length (default: 16)
+   */
+  generatePassword: async (length = 16) => {
+    const response = await api.get('/admin/remote-users/generate-password', {
+      params: { length },
+    });
+    return response.data;
+  },
+
+  /**
+   * Reset a portal user's password on all their mapped remote VMs
+   * POST /admin/remote-users/bulk-password-reset
+   * @param {Object} data - { user_id, new_password, vm_ids }
+   */
+  bulkPasswordReset: async (data) => {
+    const response = await api.post('/admin/remote-users/bulk-password-reset', data);
+    return response.data;
+  },
+};
+
+// ===========================================
+// FIREWALL API (/api/admin/vms/{vm_id}/firewall)
+// ===========================================
+export const firewallAPI = {
+  getRules: async (vmId) => {
+    const response = await api.get(`/admin/vms/${vmId}/firewall`);
+    return response.data;
+  },
+  createRule: async (vmId, ruleData) => {
+    const response = await api.post(`/admin/vms/${vmId}/firewall`, ruleData);
+    return response.data;
+  },
+  deleteRule: async (vmId, ruleName) => {
+    const response = await api.delete(`/admin/vms/${vmId}/firewall/${ruleName}`);
+    return response.data;
+  },
+  toggleRule: async (vmId, ruleName) => {
+    const response = await api.put(`/admin/vms/${vmId}/firewall/${ruleName}/toggle`);
+    return response.data;
+  },
+  updateRule: async (vmId, ruleName, ruleData) => {
+    const response = await api.put(`/admin/vms/${vmId}/firewall/${ruleName}`, ruleData);
+    return response.data;
+  },
+  createBulkRule: async (data) => {
+    const response = await api.post('/admin/firewall/bulk-create', data);
+    return response.data;
+  }
+};
+
+// ===========================================
+// CERTIFICATES API (/api/admin/vms/{vm_id}/certificates)
+// ===========================================
+export const certificateAPI = {
+  getCertificates: async (vmId) => {
+    const response = await api.get(`/admin/vms/${vmId}/certificates`);
+    return response.data;
+  }
+};
+
 // Export the axios instance for custom requests
 export default api;

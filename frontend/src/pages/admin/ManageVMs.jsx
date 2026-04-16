@@ -329,8 +329,8 @@ const ManageVMs = () => {
                     <td className="py-3 px-4 text-sm text-gray-600">{vm.os_version}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${vm.is_active
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-red-100 text-red-700'
                         }`}>
                         {vm.is_active ? 'Active' : 'Inactive'}
                       </span>
@@ -348,8 +348,8 @@ const ManageVMs = () => {
                           onClick={() => handleCheckHealth(vm)}
                           disabled={checkingHealth[vm.id]}
                           className={`p-2 rounded-lg transition-colors ${checkingHealth[vm.id]
-                              ? 'text-gray-400 cursor-not-allowed'
-                              : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
                             }`}
                           title="Check Health"
                         >

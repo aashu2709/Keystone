@@ -304,7 +304,7 @@ const ManageMappings = () => {
               {/* Permissions */}
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-gray-700">Permissions</label>
-                
+
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
