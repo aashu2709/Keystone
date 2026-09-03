@@ -21,8 +21,14 @@ try {
     $secpasswd = ConvertTo-SecureString $admin_pass_plain -AsPlainText -Force
     $cred = New-Object System.Management.Automation.PSCredential ($admin_user, $secpasswd)
 
-    # 4. Connect to Remote VM
-    $session = New-PSSession -ComputerName $vm_ip -Credential $cred -Authentication Basic -SessionOption (New-PSSessionOption -SkipCACheck -SkipCNCheck)
+    # 4. Connect to Remote VM with smart fallback (Negotiate -> Basic)
+    $sessionOpt = New-PSSessionOption -SkipCACheck -SkipCNCheck
+    $session = $null
+    try {
+        $session = New-PSSession -ComputerName $vm_ip -Credential $cred -SessionOption $sessionOpt -ErrorAction Stop
+    } catch {
+        $session = New-PSSession -ComputerName $vm_ip -Credential $cred -Authentication Basic -SessionOption $sessionOpt -ErrorAction Stop
+    }
     
     # 5. Run Command on Remote VM
     $result = Invoke-Command -Session $session -ScriptBlock {

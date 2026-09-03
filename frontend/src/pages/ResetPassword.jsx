@@ -1,22 +1,23 @@
 /**
- * Reset Password Page
+ * Reset Password Page — Shadcn UI Redesign
  */
 
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { authAPI } from '../services/api';
-import { Button, Input, Alert, Card } from '../components/ui';
-import { Shield, KeyRound, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Alert } from '@/components/ui/Alert';
+import PasswordStrengthMeter from '@/components/ui/PasswordStrengthMeter';
+import { Shield, KeyRound, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    newPassword: '',
-    confirmPassword: '',
-  });
+  const [formData, setFormData] = useState({ newPassword: '', confirmPassword: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(true);
@@ -24,15 +25,9 @@ const ResetPassword = () => {
   const [success, setSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
 
-  // Verify token on mount
   useEffect(() => {
     const verifyToken = async () => {
-      if (!token) {
-        setError('No reset token provided');
-        setVerifying(false);
-        return;
-      }
-
+      if (!token) { setError('No reset token provided'); setVerifying(false); return; }
       try {
         await authAPI.verifyResetToken(token);
         setTokenValid(true);
@@ -42,45 +37,23 @@ const ResetPassword = () => {
         setVerifying(false);
       }
     };
-
     verifyToken();
   }, [token]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (validationErrors[name]) {
-      setValidationErrors((prev) => ({ ...prev, [name]: '' }));
-    }
+    if (validationErrors[name]) setValidationErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const validateForm = () => {
     const errors = {};
-
-    if (formData.newPassword.length < 8) {
-      errors.newPassword = 'Password must be at least 8 characters';
-    }
-
-    if (!/[A-Z]/.test(formData.newPassword)) {
-      errors.newPassword = 'Password must contain at least one uppercase letter';
-    }
-
-    if (!/[a-z]/.test(formData.newPassword)) {
-      errors.newPassword = 'Password must contain at least one lowercase letter';
-    }
-
-    if (!/[0-9]/.test(formData.newPassword)) {
-      errors.newPassword = 'Password must contain at least one number';
-    }
-
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.newPassword)) {
-      errors.newPassword = 'Password must contain at least one special character';
-    }
-
-    if (formData.newPassword !== formData.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
-    }
-
+    if (formData.newPassword.length < 8) errors.newPassword = 'Password must be at least 8 characters';
+    else if (!/[A-Z]/.test(formData.newPassword)) errors.newPassword = 'Must contain an uppercase letter';
+    else if (!/[a-z]/.test(formData.newPassword)) errors.newPassword = 'Must contain a lowercase letter';
+    else if (!/[0-9]/.test(formData.newPassword)) errors.newPassword = 'Must contain a number';
+    else if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.newPassword)) errors.newPassword = 'Must contain a special character';
+    if (formData.newPassword !== formData.confirmPassword) errors.confirmPassword = 'Passwords do not match';
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -88,13 +61,8 @@ const ResetPassword = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     setLoading(true);
-
     try {
       await authAPI.resetPassword(token, formData.newPassword, formData.confirmPassword);
       setSuccess(true);
@@ -105,138 +73,129 @@ const ResetPassword = () => {
     }
   };
 
-  // Loading state
+  const bgClass = "min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-4";
+
   if (verifying) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 p-4">
-        <Card className="shadow-xl text-center p-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Verifying reset link...</p>
+      <div className={bgClass}>
+        <Card className="shadow-2xl border-border/50 w-full max-w-[420px]">
+          <CardContent className="pt-6 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">Verifying reset link...</p>
+          </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Invalid token
   if (!tokenValid && !success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 p-4">
-        <div className="w-full max-w-md">
-          <Card className="shadow-xl text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
-              <KeyRound className="text-red-600" size={32} />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">
-              Invalid Reset Link
-            </h2>
-            <p className="text-gray-600 mb-6">{error}</p>
-            <Link to="/forgot-password">
-              <Button variant="primary" className="w-full">
-                Request New Reset Link
-              </Button>
-            </Link>
-            <div className="mt-4">
-              <Link to="/login" className="text-sm text-primary-600 hover:text-primary-700 inline-flex items-center gap-1" >
-                <ArrowLeft size={16} />
-                Back to Login
+      <div className={bgClass}>
+        <div className="w-full max-w-[420px]">
+          <Card className="shadow-2xl border-border/50">
+            <CardContent className="pt-6 text-center">
+              <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-destructive/10 mb-4">
+                <AlertCircle className="h-7 w-7 text-destructive" />
+              </div>
+              <h2 className="text-lg font-semibold text-foreground mb-2">Invalid Reset Link</h2>
+              <p className="text-sm text-muted-foreground mb-6">{error}</p>
+              <Link to="/forgot-password">
+                <Button className="w-full">Request New Reset Link</Button>
               </Link>
-            </div>
+              <div className="mt-4">
+                <Link to="/login" className="text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1 transition-colors">
+                  <ArrowLeft className="h-3.5 w-3.5" /> Back to Login
+                </Link>
+              </div>
+            </CardContent>
           </Card>
         </div>
       </div>
     );
   }
 
-  // Success state
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 p-4">
-        <div className="w-full max-w-md">
-          <Card className="shadow-xl text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-              <CheckCircle className="text-green-600" size={32} />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">
-              Password Reset Successful!
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Your password has been reset. You can now login with your new password.
-            </p>
-            <Link to="/login?reset=true">
-              <Button variant="primary" className="w-full">
-                Go to Login
-              </Button>
-            </Link>
+      <div className={bgClass}>
+        <div className="w-full max-w-[420px]">
+          <Card className="shadow-2xl border-border/50">
+            <CardContent className="pt-6 text-center">
+              <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-emerald-100 mb-4">
+                <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-foreground mb-2">Password Reset Successful!</h2>
+              <p className="text-sm text-muted-foreground mb-6">You can now login with your new password.</p>
+              <Link to="/login?reset=true">
+                <Button className="w-full">Go to Login</Button>
+              </Link>
+            </CardContent>
           </Card>
         </div>
       </div>
     );
   }
 
-  // Reset password form
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
+    <div className={bgClass}>
+      <div className="w-full max-w-[420px]">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full shadow-lg mb-4">
-            <Shield className="text-primary-600" size={32} />
+          <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-primary shadow-lg shadow-primary/25 mb-4">
+            <Shield className="h-7 w-7 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Password Portal</h1>
-          <p className="text-primary-100 mt-1">Create new password</p>
+          <h1 className="text-2xl font-bold text-white">PassPortal</h1>
+          <p className="text-sm text-blue-200/70 mt-1">Create new password</p>
         </div>
 
-        <Card className="shadow-xl">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6 text-center">
-            Reset your password
-          </h2>
+        <Card className="shadow-2xl border-border/50">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-lg">Reset your password</CardTitle>
+            <CardDescription>Choose a strong, unique password.</CardDescription>
+          </CardHeader>
 
-          {error && (
-            <Alert variant="error" className="mb-4" onClose={() => setError('')}>
-              {error}
-            </Alert>
-          )}
+          <CardContent>
+            {error && (
+              <Alert variant="error" className="mb-4" onClose={() => setError('')}>
+                {error}
+              </Alert>
+            )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="New Password"
-              type="password"
-              name="newPassword"
-              value={formData.newPassword}
-              onChange={handleChange}
-              placeholder="Enter new password"
-              error={validationErrors.newPassword}
-              helperText="Min 8 chars with uppercase, lowercase, number, and special char"
-              required
-              autoFocus
-            />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Input
+                label="New Password"
+                type="password"
+                name="newPassword"
+                value={formData.newPassword}
+                onChange={handleChange}
+                placeholder="Enter new password"
+                error={validationErrors.newPassword}
+                required
+                autoFocus
+              />
+              <PasswordStrengthMeter password={formData.newPassword} />
 
-            <Input
-              label="Confirm New Password"
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Confirm new password"
-              error={validationErrors.confirmPassword}
-              required
-            />
+              <Input
+                label="Confirm New Password"
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Confirm new password"
+                error={validationErrors.confirmPassword}
+                required
+              />
 
-            <Button type="submit" className="w-full" loading={loading}>
-              <KeyRound size={18} />
-              Reset Password
-            </Button>
-          </form>
+              <Button type="submit" className="w-full" loading={loading}>
+                <KeyRound className="h-4 w-4" />
+                Reset Password
+              </Button>
+            </form>
 
-          <div className="mt-6 text-center">
-            <Link
-              to="/login"
-              className="text-sm text-primary-600 hover:text-primary-700 inline-flex items-center gap-1"
-            >
-              <ArrowLeft size={16} />
-              Back to Login
-            </Link>
-          </div>
+            <div className="mt-5 text-center">
+              <Link to="/login" className="text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1 transition-colors">
+                <ArrowLeft className="h-3.5 w-3.5" /> Back to Login
+              </Link>
+            </div>
+          </CardContent>
         </Card>
       </div>
     </div>

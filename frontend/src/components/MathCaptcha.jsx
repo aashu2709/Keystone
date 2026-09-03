@@ -1,14 +1,11 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { RefreshCw, ShieldAlert } from 'lucide-react';
 import { captchaAPI } from '../services/api';
-import { Input } from './ui';
+import { cn } from '@/lib/utils';
 
 /**
  * MathCaptcha Component
  * Renders an SVG math problem and collects the user's answer.
- * 
- * Props:
- * - onChange: (data: { token: str, answer: str }) => void
  */
 const MathCaptcha = forwardRef(({ onChange }, ref) => {
   const [captchaData, setCaptchaData] = useState(null);
@@ -38,7 +35,6 @@ const MathCaptcha = forwardRef(({ onChange }, ref) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Expose a fetchCaptcha method to parent components (useful after failed login)
   useImperativeHandle(ref, () => ({
     refresh: fetchCaptcha
   }));
@@ -53,23 +49,23 @@ const MathCaptcha = forwardRef(({ onChange }, ref) => {
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 p-3 text-red-600 bg-red-50 rounded-md text-sm border border-red-200">
-        <ShieldAlert size={16} />
+      <div className="flex items-center gap-2 p-3 text-destructive bg-destructive/10 rounded-md text-sm border border-destructive/20">
+        <ShieldAlert className="h-4 w-4 shrink-0" />
         <span>{error}</span>
-        <button type="button" onClick={fetchCaptcha} className="ml-auto underline font-medium">Retry</button>
+        <button type="button" onClick={fetchCaptcha} className="ml-auto underline font-medium hover:no-underline">Retry</button>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">
-        Security Verification <span className="text-red-500">*</span>
+      <label className="text-sm font-medium leading-none text-foreground">
+        Security Verification <span className="text-destructive">*</span>
       </label>
       <div className="flex items-center gap-3">
-        <div className="flex-shrink-0 h-10 w-36 bg-gray-50 border border-gray-200 rounded overflow-hidden flex items-center justify-center relative shadow-sm">
+        <div className="flex-shrink-0 h-10 w-36 bg-muted border border-border rounded-md overflow-hidden flex items-center justify-center">
           {loading ? (
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600"></div>
+            <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : (
              captchaData && <img src={captchaData.image_data} alt="Math CAPTCHA" className="h-full w-full object-cover select-none" draggable="false" />
           )}
@@ -79,26 +75,26 @@ const MathCaptcha = forwardRef(({ onChange }, ref) => {
           type="button"
           onClick={fetchCaptcha}
           disabled={loading}
-          className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-full transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="p-2 text-muted-foreground hover:text-primary hover:bg-accent rounded-md transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           title="Refresh CAPTCHA"
         >
-          <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </button>
 
         <div className="flex-1">
-          <Input
+          <input
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
             placeholder="= ?"
             value={answer}
             onChange={handleChange}
-            className="w-full text-center"
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-center shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             required
           />
         </div>
       </div>
-      <p className="text-xs text-gray-500">Please solve the math problem to continue.</p>
+      <p className="text-xs text-muted-foreground">Solve the math problem above to continue.</p>
     </div>
   );
 });

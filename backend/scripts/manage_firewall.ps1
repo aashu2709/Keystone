@@ -1,6 +1,6 @@
 param (
     [Parameter(Mandatory=$true)]
-    [ValidateSet("list", "add", "delete", "toggle", "update")]
+    [ValidateSet("list", "add", "delete", "toggle", "update", "enable-group")]
     [string]$action,
 
     [Parameter(Mandatory=$true)]
@@ -59,6 +59,9 @@ param (
     [string]$encryption = "NotRequired",
     
     [Parameter(Mandatory=$false)]
+    [string]$override_block_rules = "False",
+    
+    [Parameter(Mandatory=$false)]
     [string]$predefined_group = "",
 
     [Parameter(Mandatory=$false)]
@@ -91,6 +94,29 @@ function Write-JsonResult {
     Write-Output ($result | ConvertTo-Json -Depth 5 -Compress)
 }
 
+function Invoke-WinRMSmart {
+    param(
+        [string]$ComputerName,
+        [PSCredential]$Credential,
+        [scriptblock]$ScriptBlock,
+        [array]$ArgumentList = @(),
+        [string]$ErrorAction = "Stop"
+    )
+    try {
+        if ($ArgumentList.Count -gt 0) {
+            return Invoke-Command -ComputerName $ComputerName -Credential $Credential -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList -ErrorAction $ErrorAction
+        } else {
+            return Invoke-Command -ComputerName $ComputerName -Credential $Credential -ScriptBlock $ScriptBlock -ErrorAction $ErrorAction
+        }
+    } catch {
+        if ($ArgumentList.Count -gt 0) {
+            return Invoke-Command -ComputerName $ComputerName -Credential $Credential -Authentication Basic -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList -ErrorAction $ErrorAction
+        } else {
+            return Invoke-Command -ComputerName $ComputerName -Credential $Credential -Authentication Basic -ScriptBlock $ScriptBlock -ErrorAction $ErrorAction
+        }
+    }
+}
+
 # ============================================
 # MAIN EXECUTION
 # ============================================
@@ -118,10 +144,11 @@ try {
     # ============================================
     if ($action -eq "list") {
         # We will retrieve all rules and all filters in one go to prevent slow N+1 querying.
-        $rulesData = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ScriptBlock {
+        $rulesData = Invoke-WinRMSmart -ComputerName $vm_ip -Credential $cred -ScriptBlock {
             $ports = Get-NetFirewallPortFilter
             $addrs = Get-NetFirewallAddressFilter
             $apps = Get-NetFirewallApplicationFilter
+            $secs = Get-NetFirewallSecurityFilter
 
             $portMap = @{}
             foreach ($p in $ports) { $portMap[$p.InstanceID] = $p }
@@ -132,6 +159,9 @@ try {
             $appMap = @{}
             foreach ($ap in $apps) { $appMap[$ap.InstanceID] = $ap }
 
+            $secMap = @{}
+            foreach ($s in $secs) { $secMap[$s.InstanceID] = $s }
+
             # Also fetch interface type filters
             $intfs = Get-NetFirewallInterfaceTypeFilter
             $intfMap = @{}
@@ -141,6 +171,7 @@ try {
                 $pf = $portMap[$_.Name]
                 $af = $addrMap[$_.Name]
                 $apf = $appMap[$_.Name]
+                $sf = $secMap[$_.Name]
                 $itf = $intfMap[$_.Name]
 
                 [PSCustomObject]@{
@@ -161,6 +192,9 @@ try {
                     InterfaceType = if ($itf -and $itf.InterfaceType) { $itf.InterfaceType.ToString() } else { "Any" }
                     IcmpType = if ($pf -and $pf.IcmpType) { $pf.IcmpType.ToString() } else { "Any" }
                     IcmpCode = if ($pf -and $pf.IcmpCode) { $pf.IcmpCode.ToString() } else { "Any" }
+                    Authentication = if ($sf -and $sf.Authentication) { $sf.Authentication.ToString() } else { "NotRequired" }
+                    Encryption = if ($sf -and $sf.Encryption) { $sf.Encryption.ToString() } else { "NotRequired" }
+                    OverrideBlockRules = if ($sf -and $sf.OverrideBlockRules) { $sf.OverrideBlockRules.ToString() } else { "False" }
                 }
             }
             return @{ rules = @($rules) }
@@ -184,7 +218,7 @@ try {
             Write-JsonResult -Success $false -Message "predefined_group is required for action enable-group"
             exit 1
         }
-        $result = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ScriptBlock {
+        $result = Invoke-WinRMSmart -ComputerName $vm_ip -Credential $cred -ScriptBlock {
             param($groupName)
             try {
                 Enable-NetFirewallRule -Group $groupName -ErrorAction Stop
@@ -202,8 +236,8 @@ try {
     # ACTION: ADD
     # ============================================
     if ($action -eq "add") {
-        $result = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ScriptBlock {
-            param($rName, $rDesc, $rDir, $rAct, $rProf, $rProt, $rLPort, $rRPort, $rLAddr, $rRAddr, $rProg, $rService, $rEnabled, $icmpType, $icmpCode, $auth, $enc, $rEdge, $rIntf)
+        $result = Invoke-WinRMSmart -ComputerName $vm_ip -Credential $cred -ScriptBlock {
+            param($rName, $rDesc, $rDir, $rAct, $rProf, $rProt, $rLPort, $rRPort, $rLAddr, $rRAddr, $rProg, $rService, $rEnabled, $icmpType, $icmpCode, $auth, $enc, $rEdge, $rIntf, $ovBlk)
             
             # Check if exists
             $existing = Get-NetFirewallRule -DisplayName $rName -ErrorAction SilentlyContinue
@@ -244,6 +278,8 @@ try {
                 # IPsec / Authentication
                 if ($auth -ne "NotRequired") { $params.Authentication = $auth }
                 if ($enc -ne "NotRequired") { $params.Encryption = $enc }
+                if ($ovBlk -eq "True") { $params.OverrideBlockRules = $true }
+                if ($ovBlk -eq "False") { $params.OverrideBlockRules = $false }
 
                 # Edge Traversal Policy
                 if ($rEdge -and $rEdge -ne "Block") {
@@ -261,7 +297,7 @@ try {
             } catch {
                 return @{ success = $false; message = "Failed to create rule: $($_.Exception.Message)" }
             }
-        } -ArgumentList $rule_name, $rule_description, $direction, $rule_action, $profile, $protocol, $local_port, $remote_port, $local_address, $remote_address, $program_path, $service_name, $enabled, $icmp_type, $icmp_code, $authentication, $encryption, $edge_traversal, $interface_types
+        } -ArgumentList $rule_name, $rule_description, $direction, $rule_action, $profile, $protocol, $local_port, $remote_port, $local_address, $remote_address, $program_path, $service_name, $enabled, $icmp_type, $icmp_code, $authentication, $encryption, $edge_traversal, $interface_types, $override_block_rules
 
         Write-JsonResult -Success $result.success -Message $result.message
         exit 0
@@ -271,7 +307,7 @@ try {
     # ACTION: TOGGLE
     # ============================================
     if ($action -eq "toggle") {
-        $result = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ScriptBlock {
+        $result = Invoke-WinRMSmart -ComputerName $vm_ip -Credential $cred -ScriptBlock {
             param($rName)
             try {
                 $rule = Get-NetFirewallRule -DisplayName $rName -ErrorAction Stop
@@ -295,7 +331,7 @@ try {
     # ACTION: DELETE
     # ============================================
     if ($action -eq "delete") {
-        $result = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ScriptBlock {
+        $result = Invoke-WinRMSmart -ComputerName $vm_ip -Credential $cred -ScriptBlock {
             param($rName)
             try {
                 Remove-NetFirewallRule -DisplayName $rName -ErrorAction Stop
@@ -313,8 +349,8 @@ try {
     # ACTION: UPDATE
     # ============================================
     if ($action -eq "update") {
-        $result = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ScriptBlock {
-            param($rName, $rDesc, $rDir, $rAct, $rProf, $rProt, $rLPort, $rRPort, $rLAddr, $rRAddr, $rProg, $rService, $rEnabled, $icmpType, $icmpCode, $auth, $enc, $rEdge, $rIntf)
+        $result = Invoke-WinRMSmart -ComputerName $vm_ip -Credential $cred -ScriptBlock {
+            param($rName, $rDesc, $rDir, $rAct, $rProf, $rProt, $rLPort, $rRPort, $rLAddr, $rRAddr, $rProg, $rService, $rEnabled, $icmpType, $icmpCode, $auth, $enc, $rEdge, $rIntf, $ovBlk)
             
             try {
                 $rule = Get-NetFirewallRule -DisplayName $rName -ErrorAction Stop
@@ -362,6 +398,9 @@ try {
                 # IPsec / Authentication
                 if ($auth) { $params.Authentication = $auth }
                 if ($enc) { $params.Encryption = $enc }
+                if ($ovBlk -ne "") {
+                    $params.OverrideBlockRules = if ($ovBlk -eq "True") { $true } else { $false }
+                }
 
                 # Edge Traversal Policy
                 if ($rEdge) { $params.EdgeTraversalPolicy = $rEdge }
@@ -378,7 +417,7 @@ try {
             } catch {
                 return @{ success = $false; message = "Failed to update rule: $($_.Exception.Message)" }
             }
-        } -ArgumentList $rule_name, $rule_description, $direction, $rule_action, $profile, $protocol, $local_port, $remote_port, $local_address, $remote_address, $program_path, $service_name, $enabled, $icmp_type, $icmp_code, $authentication, $encryption, $edge_traversal, $interface_types
+        } -ArgumentList $rule_name, $rule_description, $direction, $rule_action, $profile, $protocol, $local_port, $remote_port, $local_address, $remote_address, $program_path, $service_name, $enabled, $icmp_type, $icmp_code, $authentication, $encryption, $edge_traversal, $interface_types, $override_block_rules
 
         Write-JsonResult -Success $result.success -Message $result.message
         exit 0

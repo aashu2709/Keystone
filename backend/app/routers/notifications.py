@@ -61,7 +61,7 @@ def get_user_id_from_token(current_user: dict) -> str:
 )
 async def get_notifications(
     current_user: dict = Depends(get_current_user),
-    limit: int = 20,
+    limit: int = 50,
     offset: int = 0,
     unread_only: bool = False
 ):
@@ -69,7 +69,7 @@ async def get_notifications(
     Get notifications for the current user.
 
     Query Parameters:
-    - limit: Max notifications to return (default: 20)
+    - limit: Max notifications to return (default: 50, 0 = no limit)
     - offset: Skip count for pagination (default: 0)
     - unread_only: If true, only return unread notifications (default: false)
     """

@@ -60,6 +60,11 @@ class ResetPasswordRequest(BaseModel):
         return v
 
 
+class PasswordVerifyRequest(BaseModel):
+    """Schema for password verification (e.g. before reboot/shutdown)."""
+    password: str = Field(..., min_length=1)
+
+
 # ===========================================
 # RESPONSE SCHEMAS
 # ===========================================

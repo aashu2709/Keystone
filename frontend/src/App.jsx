@@ -29,6 +29,8 @@ import AuditLogs from "./pages/admin/AuditLogs";
 import ManageRemoteUsers from "./pages/admin/ManageRemoteUsers";
 import ManageFirewall from "./pages/admin/ManageFirewall";
 import ManageCertificates from "./pages/admin/ManageCertificates";
+import ManageServices from "./pages/admin/ManageServices";
+import VMHealthDashboard from "./pages/admin/VMHealthDashboard";
 
 function App() {
   return (
@@ -42,46 +44,28 @@ function App() {
             position="top-right"
             reverseOrder={false}
             gutter={8}
-            containerStyle={{
-              top: 80, // Below the header
-            }}
+            containerStyle={{ top: 72 }}
             toastOptions={{
-              // Default options for all toasts
               duration: 5000,
               style: {
-                background: "#fff",
-                color: "#333",
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-                borderRadius: "8px",
+                background: "hsl(var(--card))",
+                color: "hsl(var(--card-foreground))",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06)",
+                borderRadius: "var(--radius)",
+                border: "1px solid hsl(var(--border))",
                 padding: "12px 16px",
-                fontSize: "14px",
+                fontSize: "13px",
                 maxWidth: "400px",
               },
-              // Success toast style
               success: {
                 duration: 5000,
-                style: {
-                  background: "#ECFDF5",
-                  color: "#065F46",
-                  border: "1px solid #A7F3D0",
-                },
-                iconTheme: {
-                  primary: "#10B981",
-                  secondary: "#fff",
-                },
+                style: { background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" },
+                iconTheme: { primary: "#10B981", secondary: "#fff" },
               },
-              // Error toast style
               error: {
                 duration: 6000,
-                style: {
-                  background: "#FEF2F2",
-                  color: "#991B1B",
-                  border: "1px solid #FECACA",
-                },
-                iconTheme: {
-                  primary: "#EF4444",
-                  secondary: "#fff",
-                },
+                style: { background: "#FEF2F2", color: "#991B1B", border: "1px solid #FECACA" },
+                iconTheme: { primary: "#EF4444", secondary: "#fff" },
               },
             }}
           />
@@ -197,6 +181,17 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            
+            <Route
+              path="/admin/vms/:vmId/health"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <Layout>
+                    <VMHealthDashboard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
 
             <Route
               path="/admin/mappings"
@@ -226,6 +221,17 @@ function App() {
                 <ProtectedRoute requireAdmin>
                   <Layout>
                     <ManageRemoteUsers />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/services"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <Layout>
+                    <ManageServices />
                   </Layout>
                 </ProtectedRoute>
               }

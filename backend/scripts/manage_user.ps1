@@ -98,13 +98,36 @@ try {
     }
     Write-Log -Level "DEBUG" -Message "WinRM is reachable on $vm_ip"
 
+function Invoke-WinRMSmart {
+    param(
+        [string]$ComputerName,
+        [PSCredential]$Credential,
+        [scriptblock]$ScriptBlock,
+        [array]$ArgumentList = @(),
+        [string]$ErrorAction = "Stop"
+    )
+    try {
+        if ($ArgumentList.Count -gt 0) {
+            return Invoke-Command -ComputerName $ComputerName -Credential $Credential -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList -ErrorAction $ErrorAction
+        } else {
+            return Invoke-Command -ComputerName $ComputerName -Credential $Credential -ScriptBlock $ScriptBlock -ErrorAction $ErrorAction
+        }
+    } catch {
+        if ($ArgumentList.Count -gt 0) {
+            return Invoke-Command -ComputerName $ComputerName -Credential $Credential -Authentication Basic -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList -ErrorAction $ErrorAction
+        } else {
+            return Invoke-Command -ComputerName $ComputerName -Credential $Credential -Authentication Basic -ScriptBlock $ScriptBlock -ErrorAction $ErrorAction
+        }
+    }
+}
+
     # ============================================
     # ACTION: LIST USERS
     # ============================================
     if ($action -eq "list") {
         Write-Log -Level "INFO" -Message "Listing local users on $vm_ip"
 
-        $usersData = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ErrorAction Stop -ScriptBlock {
+        $usersData = Invoke-WinRMSmart -ComputerName $vm_ip -Credential $cred -ErrorAction Stop -ScriptBlock {
             $users = Get-LocalUser | ForEach-Object {
                 @{
                     name             = $_.Name
@@ -170,7 +193,7 @@ try {
             exit 1
         }
 
-        $createResult = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ErrorAction Stop -ScriptBlock {
+        $createResult = Invoke-WinRMSmart -ComputerName $vm_ip -Credential $cred -ErrorAction Stop -ScriptBlock {
             param($username, $password, $fullname, $desc, $usertype, $mustchange, $enablerdp)
 
             # Check if user already exists
@@ -238,7 +261,7 @@ try {
     if ($action -eq "disable") {
         Write-Log -Level "INFO" -Message "Disabling user '$target_user' on $vm_ip"
 
-        $result = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ErrorAction Stop -ScriptBlock {
+        $result = Invoke-WinRMSmart -ComputerName $vm_ip -Credential $cred -ErrorAction Stop -ScriptBlock {
             param($username)
             try {
                 $user = Get-LocalUser -Name $username -ErrorAction Stop
@@ -273,7 +296,7 @@ try {
     if ($action -eq "enable") {
         Write-Log -Level "INFO" -Message "Enabling user '$target_user' on $vm_ip"
 
-        $result = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ErrorAction Stop -ScriptBlock {
+        $result = Invoke-WinRMSmart -ComputerName $vm_ip -Credential $cred -ErrorAction Stop -ScriptBlock {
             param($username)
             try {
                 $user = Get-LocalUser -Name $username -ErrorAction Stop
@@ -308,7 +331,7 @@ try {
     if ($action -eq "unlock") {
         Write-Log -Level "INFO" -Message "Unlocking user '$target_user' on $vm_ip"
 
-        $result = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ErrorAction Stop -ScriptBlock {
+        $result = Invoke-WinRMSmart -ComputerName $vm_ip -Credential $cred -ErrorAction Stop -ScriptBlock {
             param($username)
             try {
                 $user = Get-LocalUser -Name $username -ErrorAction Stop
@@ -345,7 +368,7 @@ try {
     if ($action -eq "delete") {
         Write-Log -Level "INFO" -Message "Deleting user '$target_user' on $vm_ip"
 
-        $result = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ErrorAction Stop -ScriptBlock {
+        $result = Invoke-WinRMSmart -ComputerName $vm_ip -Credential $cred -ErrorAction Stop -ScriptBlock {
             param($username)
             try {
                 # Safety check: prevent deleting built-in accounts
@@ -388,7 +411,7 @@ try {
             exit 1
         }
 
-        $result = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ErrorAction Stop -ScriptBlock {
+        $result = Invoke-WinRMSmart -ComputerName $vm_ip -Credential $cred -ErrorAction Stop -ScriptBlock {
             param($username, $password)
             try {
                 $user = Get-LocalUser -Name $username -ErrorAction Stop

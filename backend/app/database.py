@@ -115,6 +115,27 @@ async def create_indexes():
     # Index on user_id for finding all tokens for a user
     await database.token_blacklist.create_index("user_id")
 
+    # ===========================================
+    # TELEMETRY INDEXES (Raw 30s data)
+    # ===========================================
+    # Compound index for fast timeline queries per VM
+    await database.telemetry.create_index([("vm_id", 1), ("timestamp", 1)])
+
+    # The old code had a TTL index (expireAfterSeconds=2592000) on "timestamp".
+    # We now manage cleanup manually via the nightly downsampling job.
+    # Drop the old TTL index if it exists, then create a plain index.
+    try:
+        await database.telemetry.drop_index("timestamp_1")
+    except Exception:
+        pass  # Index didn't exist — that's fine
+    await database.telemetry.create_index("timestamp", name="timestamp_1")
+
+    # ===========================================
+    # TELEMETRY COMPRESSED INDEXES (5-min averages)
+    # ===========================================
+    # Compound index for fast history queries per VM
+    await database.telemetry_compressed.create_index([("vm_id", 1), ("bucket_start", 1)])
+
     print("📇 Database indexes created")
 
 
@@ -157,3 +178,8 @@ def get_notifications_collection():
 def get_token_blacklist_collection():
     """Get the token blacklist collection for logout security."""
     return database.token_blacklist
+
+
+def get_telemetry_collection():
+    """Get the performance telemetry history collection."""
+    return database.telemetry

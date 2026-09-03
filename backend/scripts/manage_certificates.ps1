@@ -49,7 +49,7 @@ try {
         exit 1
     }
 
-    $certData = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ScriptBlock {
+    $scriptBlock = {
         # Import WebAdministration module for IIS management
         try {
             Import-Module WebAdministration -ErrorAction Stop
@@ -133,6 +133,13 @@ try {
         }
 
         return @{ certificates = @($allCerts) }
+    }
+
+    $certData = $null
+    try {
+        $certData = Invoke-Command -ComputerName $vm_ip -Credential $cred -ScriptBlock $scriptBlock -ErrorAction Stop
+    } catch {
+        $certData = Invoke-Command -ComputerName $vm_ip -Credential $cred -Authentication Basic -ScriptBlock $scriptBlock -ErrorAction Stop
     }
 
     # Check if the remote script returned an error (e.g. IIS not installed)

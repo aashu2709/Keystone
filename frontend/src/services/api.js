@@ -243,6 +243,16 @@ export const authAPI = {
     });
     return response.data;
   },
+
+  /**
+   * Verify portal password
+   * POST /auth/verify-password
+   * @param {string} password
+   */
+  verifyPassword: async (password) => {
+    const response = await api.post('/auth/verify-password', { password });
+    return response.data;
+  },
 };
 
 // ===========================================
@@ -781,7 +791,7 @@ export const firewallAPI = {
     return response.data;
   },
   updateRule: async (vmId, ruleName, ruleData) => {
-    const response = await api.put(`/admin/vms/${vmId}/firewall/${ruleName}`, ruleData);
+    const response = await api.put(`/admin/vms/${vmId}/firewall/${encodeURIComponent(ruleName)}`, ruleData);
     return response.data;
   },
   createBulkRule: async (data) => {
@@ -798,6 +808,47 @@ export const certificateAPI = {
     const response = await api.get(`/admin/vms/${vmId}/certificates`);
     return response.data;
   }
+};
+
+// ===========================================
+// SERVICES API (/api/admin/vms/{vm_id}/services)
+// ===========================================
+export const serviceAPI = {
+  getServices: async (vmId) => {
+    const response = await api.get(`/admin/vms/${vmId}/services`);
+    return response.data;
+  },
+  changeState: async (vmId, serviceName, action) => {
+    // action should be 'start', 'stop', or 'restart'
+    const response = await api.post(`/admin/vms/${vmId}/services/${serviceName}/${action}`);
+    return response.data;
+  }
+};
+
+// ===========================================
+// VM HEALTH TELEMETRY API (/api/admin/vms/{vm_id}/health)
+// ===========================================
+export const vmHealthAPI = {
+  getTelemetry: async (vmId) => {
+    const response = await api.get(`/admin/vms/${vmId}/health/telemetry`);
+    return response.data;
+  },
+  // Fix 4/6: Pass the selected time range (hours) so backend routes to
+  // raw collection (≤24h) or compressed collection (>24h) automatically.
+  getHistory: async (vmId, hours = null) => {
+    const params = hours !== null ? { hours } : {};
+    const response = await api.get(`/admin/vms/${vmId}/health/history`, { params });
+    return response.data;
+  },
+  powerAction: async (vmId, action, password) => {
+    const response = await api.post(`/admin/vms/${vmId}/health/power`, { action, password });
+    return response.data;
+  },
+  rdpSessionAction: async (vmId, sessionId, action) => {
+    const response = await api.post(`/admin/vms/${vmId}/health/rdp/sessions/${sessionId}/action?action=${action}`);
+    return response.data;
+  },
+
 };
 
 // Export the axios instance for custom requests

@@ -207,8 +207,12 @@ try {
     } elseif ($expiryStatus -eq "NOT_EXPIRED") {
         # Normal verification for non-expired passwords
         try {
-            Invoke-Command -ComputerName $vm_ip -Credential $oldCred -ScriptBlock { whoami } -Authentication Basic -ErrorAction Stop | Out-Null
-            Write-Log -Level "DEBUG" -Message "Old password verified successfully with Basic."
+            try {
+                Invoke-Command -ComputerName $vm_ip -Credential $oldCred -ScriptBlock { whoami } -ErrorAction Stop | Out-Null
+            } catch {
+                Invoke-Command -ComputerName $vm_ip -Credential $oldCred -ScriptBlock { whoami } -Authentication Basic -ErrorAction Stop | Out-Null
+            }
+            Write-Log -Level "DEBUG" -Message "Old password verified successfully."
         }
         catch {
             Write-Log -Level "ERROR" -Message "Old password is incorrect."
@@ -221,11 +225,15 @@ try {
     }
     Write-Log -Level "DEBUG" -Message "Verifying admin credentials for $admin_user..."
     Write-Log -Level "DEBUG" -Message "Admin password received: [Redacted for logging]"
-    Write-Log -Level "DEBUG" -Message "Attempting Basic authentication for admin verification..."
+    Write-Log -Level "DEBUG" -Message "Attempting WinRM authentication for admin verification..."
     try {
-        # Admin verification with explicit Basic auth
-        Invoke-Command -ComputerName $vm_ip -Credential $cred -ScriptBlock { whoami } -Authentication Basic -ErrorAction Stop | Out-Null
-        Write-Log -Level "DEBUG" -Message "Admin verified successfully with Basic."
+        # Admin verification with smart fallback (Negotiate -> Basic)
+        try {
+            Invoke-Command -ComputerName $vm_ip -Credential $cred -ScriptBlock { whoami } -ErrorAction Stop | Out-Null
+        } catch {
+            Invoke-Command -ComputerName $vm_ip -Credential $cred -ScriptBlock { whoami } -Authentication Basic -ErrorAction Stop | Out-Null
+        }
+        Write-Log -Level "DEBUG" -Message "Admin verified successfully."
     }
     catch {
         Write-Log -Level "ERROR" -Message "Basic authentication failed for admin verification: $($_.Exception.Message)"

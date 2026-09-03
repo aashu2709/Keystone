@@ -1,15 +1,16 @@
 /**
- * Forgot Password Page
- * Fixed: Clean state management to prevent white screen
- * Updated: Removed reCAPTCHA - not compatible with private IP
+ * Forgot Password Page — Shadcn UI Redesign
  */
 
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { authAPI } from '../services/api';
-import { Button, Input, Alert, Card } from '../components/ui';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Alert } from '@/components/ui/Alert';
 import MathCaptcha from '../components/MathCaptcha';
-import { Shield, Mail, ArrowLeft } from 'lucide-react';
+import { Shield, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -20,15 +21,9 @@ const ForgotPassword = () => {
   const [captchaData, setCaptchaData] = useState({ token: '', answer: '' });
   const captchaRef = useRef(null);
 
-  // Set ready state after component mounts
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsReady(true);
-    }, 100);
-
-    return () => {
-      clearTimeout(timer);
-    };
+    const timer = setTimeout(() => setIsReady(true), 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleSubmit = async (e) => {
@@ -53,109 +48,101 @@ const ForgotPassword = () => {
     }
   };
 
-  // Show loading until ready
   if (!isReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white mx-auto"></div>
-          <p className="mt-4 text-white">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto" />
+          <p className="mt-4 text-sm text-blue-200/70">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // Success state
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 p-4">
-        <div className="w-full max-w-md">
-          <Card className="shadow-xl text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-              <Mail className="text-green-600" size={32} />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">
-              Check your email
-            </h2>
-            <p className="text-gray-600 mb-6">
-              If an account with that email exists, we've sent a password reset link.
-              Please check your inbox (and spam folder).
-            </p>
-            <Link to="/login">
-              <Button variant="secondary" className="w-full">
-                <ArrowLeft size={18} />
-                Back to Login
-              </Button>
-            </Link>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-4">
+        <div className="w-full max-w-[420px]">
+          <Card className="shadow-2xl border-border/50">
+            <CardContent className="pt-6 text-center">
+              <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-emerald-100 mb-4">
+                <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-foreground mb-2">Check your email</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                If an account with that email exists, we've sent a password reset link. Please check your inbox and spam folder.
+              </p>
+              <Link to="/login">
+                <Button variant="outline" className="w-full">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Login
+                </Button>
+              </Link>
+            </CardContent>
           </Card>
         </div>
       </div>
     );
   }
 
-  // Main form
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 to-primary-700 p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-4">
+      <div className="w-full max-w-[420px]">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full shadow-lg mb-4">
-            <Shield className="text-primary-600" size={32} />
+          <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-primary shadow-lg shadow-primary/25 mb-4">
+            <Shield className="h-7 w-7 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Password Portal</h1>
-          <p className="text-primary-100 mt-1">Reset your account password</p>
+          <h1 className="text-2xl font-bold text-white">PassPortal</h1>
+          <p className="text-sm text-blue-200/70 mt-1">Reset your account password</p>
         </div>
 
-        <Card className="shadow-xl">
-          <h2 className="text-xl font-semibold text-gray-800 mb-2 text-center">
-            Forgot your password?
-          </h2>
-          <p className="text-gray-600 text-sm text-center mb-6">
-            Enter your email address and we'll send you a link to reset your password.
-          </p>
+        <Card className="shadow-2xl border-border/50">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-lg">Forgot your password?</CardTitle>
+            <CardDescription>Enter your email and we'll send you a reset link.</CardDescription>
+          </CardHeader>
 
-          {error && (
-            <Alert variant="error" className="mb-4" onClose={() => setError('')}>
-              {error}
-            </Alert>
-          )}
+          <CardContent>
+            {error && (
+              <Alert variant="error" className="mb-4" onClose={() => setError('')}>
+                {error}
+              </Alert>
+            )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              required
-              autoFocus
-            />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Input
+                label="Email Address"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                required
+                autoFocus
+              />
 
-            <MathCaptcha 
-              ref={captchaRef} 
-              onChange={setCaptchaData} 
-            />
+              <MathCaptcha ref={captchaRef} onChange={setCaptchaData} />
 
-            <Button
-              type="submit"
-              className="w-full"
-              loading={loading}
-              disabled={!email.trim() || !captchaData.answer}
-            >
-              <Mail size={18} />
-              Send Reset Link
-            </Button>
-          </form>
+              <Button
+                type="submit"
+                className="w-full"
+                loading={loading}
+                disabled={!email.trim() || !captchaData.answer}
+              >
+                <Mail className="h-4 w-4" />
+                Send Reset Link
+              </Button>
+            </form>
 
-          <div className="mt-6 text-center">
-            <Link
-              to="/login"
-              className="text-sm text-primary-600 hover:text-primary-700 inline-flex items-center gap-1 hover:underline"
-            >
-              <ArrowLeft size={16} />
-              Back to Login
-            </Link>
-          </div>
+            <div className="mt-5 text-center">
+              <Link
+                to="/login"
+                className="text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1 transition-colors"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to Login
+              </Link>
+            </div>
+          </CardContent>
         </Card>
       </div>
     </div>

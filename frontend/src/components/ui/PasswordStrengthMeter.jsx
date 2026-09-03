@@ -1,128 +1,92 @@
-/**
- * PasswordStrengthMeter Component
- * =================================
- * Displays a live password strength bar and per-rule checklist.
- * Replaces the static blue requirements info box.
- *
- * Props:
- *   password {string}  - The current password value to evaluate
- *   className {string} - Optional extra class names on the wrapper
- */
-
 import { useMemo } from 'react';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Progress } from '@/components/ui/Progress';
+import { Check, X, Minus } from 'lucide-react';
 
-// ─── Rule Definitions ────────────────────────────────────────────────────────
+const PasswordStrengthMeter = ({ password = '' }) => {
+  const analysis = useMemo(() => {
+    const checks = [
+      { label: 'At least 8 characters', met: password.length >= 8 },
+      { label: 'Contains uppercase letter', met: /[A-Z]/.test(password) },
+      { label: 'Contains lowercase letter', met: /[a-z]/.test(password) },
+      { label: 'Contains a number', met: /[0-9]/.test(password) },
+      { label: 'Contains special character', met: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password) },
+    ];
 
-const RULES = [
-  {
-    id: 'length',
-    label: 'At least 8 characters',
-    test: (p) => p.length >= 8,
-  },
-  {
-    id: 'uppercase',
-    label: 'One uppercase letter (A–Z)',
-    test: (p) => /[A-Z]/.test(p),
-  },
-  {
-    id: 'lowercase',
-    label: 'One lowercase letter (a–z)',
-    test: (p) => /[a-z]/.test(p),
-  },
-  {
-    id: 'number',
-    label: 'One number (0–9)',
-    test: (p) => /[0-9]/.test(p),
-  },
-  {
-    id: 'special',
-    label: 'One special character (!@#$%…)',
-    test: (p) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(p),
-  },
-];
+    const score = checks.filter((c) => c.met).length;
 
-// ─── Strength Level Config ────────────────────────────────────────────────────
+    let strength = 'none';
+    let color = 'bg-muted';
+    let label = '';
 
-const LEVELS = [
-  { label: 'Too Weak', color: 'bg-red-500', text: 'text-red-600', segments: 1 },
-  { label: 'Weak', color: 'bg-orange-400', text: 'text-orange-500', segments: 2 },
-  { label: 'Fair', color: 'bg-yellow-400', text: 'text-yellow-600', segments: 3 },
-  { label: 'Strong', color: 'bg-emerald-400', text: 'text-emerald-600', segments: 4 },
-  { label: 'Very Strong', color: 'bg-green-500', text: 'text-green-600', segments: 5 },
-];
+    if (password.length === 0) {
+      strength = 'none';
+      label = '';
+    } else if (score <= 1) {
+      strength = 'weak';
+      color = 'bg-red-500';
+      label = 'Weak';
+    } else if (score <= 2) {
+      strength = 'fair';
+      color = 'bg-orange-500';
+      label = 'Fair';
+    } else if (score <= 3) {
+      strength = 'good';
+      color = 'bg-amber-500';
+      label = 'Good';
+    } else if (score <= 4) {
+      strength = 'strong';
+      color = 'bg-emerald-500';
+      label = 'Strong';
+    } else {
+      strength = 'excellent';
+      color = 'bg-emerald-600';
+      label = 'Excellent';
+    }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
-const PasswordStrengthMeter = ({ password = '', className = '' }) => {
-  const evaluated = useMemo(() => {
-    return RULES.map((rule) => ({
-      ...rule,
-      passed: password.length > 0 ? rule.test(password) : false,
-    }));
+    return { checks, score, strength, color, label, percentage: (score / checks.length) * 100 };
   }, [password]);
 
-  const passedCount = evaluated.filter((r) => r.passed).length;
-
-  // Determine level: 0 rules = index 0, all 5 = index 4
-  const levelIndex = password.length === 0 ? -1 : Math.min(passedCount - 1, 4);
-  const level = levelIndex >= 0 ? LEVELS[levelIndex] : null;
+  if (!password) return null;
 
   return (
-    <div className={`space-y-3 ${className}`}>
-      {/* ── Strength Bar ── */}
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-medium text-gray-500">Password strength</span>
-          {level && (
-            <span className={`text-xs font-semibold ${level.text} transition-colors duration-300`}>
-              {level.label}
-            </span>
-          )}
+    <div className="space-y-3">
+      {/* Strength bar */}
+      <div className="space-y-1.5">
+        <div className="flex justify-between items-center">
+          <span className="text-xs font-medium text-muted-foreground">Password Strength</span>
+          <span className={cn(
+            "text-xs font-semibold",
+            analysis.strength === 'weak' && "text-red-600",
+            analysis.strength === 'fair' && "text-orange-600",
+            analysis.strength === 'good' && "text-amber-600",
+            analysis.strength === 'strong' && "text-emerald-600",
+            analysis.strength === 'excellent' && "text-emerald-700",
+          )}>
+            {analysis.label}
+          </span>
         </div>
-
-        {/* 5-segment bar */}
-        <div className="flex gap-1">
-          {LEVELS.map((lvl, idx) => {
-            const filled = idx < (passedCount);
-            return (
-              <div
-                key={idx}
-                className={`
-                  h-1.5 flex-1 rounded-full transition-all duration-300
-                  ${filled ? level?.color ?? 'bg-gray-200' : 'bg-gray-200'}
-                `}
-              />
-            );
-          })}
+        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+          <div
+            className={cn("h-full rounded-full transition-all duration-500 ease-out", analysis.color)}
+            style={{ width: `${analysis.percentage}%` }}
+          />
         </div>
       </div>
 
-      {/* ── Rule Checklist ── */}
-      <div className="space-y-1.5">
-        {evaluated.map((rule) => (
-          <div key={rule.id} className="flex items-center gap-2">
-            {rule.passed ? (
-              <CheckCircle2
-                size={15}
-                className="text-green-500 flex-shrink-0 transition-colors duration-200"
-              />
+      {/* Requirements checklist */}
+      <div className="grid grid-cols-1 gap-1">
+        {analysis.checks.map((check, i) => (
+          <div key={i} className="flex items-center gap-2 text-xs">
+            {check.met ? (
+              <Check className="h-3 w-3 text-emerald-600 shrink-0" />
             ) : (
-              <XCircle
-                size={15}
-                className={`flex-shrink-0 transition-colors duration-200 ${password.length > 0 ? 'text-red-400' : 'text-gray-300'
-                  }`}
-              />
+              <Minus className="h-3 w-3 text-muted-foreground shrink-0" />
             )}
-            <span
-              className={`text-xs transition-colors duration-200 ${rule.passed
-                  ? 'text-green-700 font-medium'
-                  : password.length > 0
-                    ? 'text-gray-600'
-                    : 'text-gray-400'
-                }`}
-            >
-              {rule.label}
+            <span className={cn(
+              check.met ? "text-foreground" : "text-muted-foreground"
+            )}>
+              {check.label}
             </span>
           </div>
         ))}

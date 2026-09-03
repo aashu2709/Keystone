@@ -19,8 +19,39 @@ from typing import Optional
 from app.config import settings
 
 
+def _kill_process_tree(pid: int):
+    """
+    Kill a process AND all its child processes on Windows.
+
+    CRITICAL for WinRM telemetry: when we timeout a PowerShell process,
+    process.kill() only kills the parent powershell.exe. But that parent
+    has spawned child processes (wsmprovhost.exe on the remote VM, conhost.exe
+    locally, etc.). If we don't kill the children, the remote WinRM shell
+    stays open and counts against MaxShellsPerUser. After ~5-10 leaked shells,
+    the remote VM refuses ALL new connections → ALL telemetry fails → gaps.
+
+    taskkill /T = kill process tree (parent + children)
+    taskkill /F = force kill
+    """
+    try:
+        subprocess.run(
+            ["taskkill", "/T", "/F", "/PID", str(pid)],
+            capture_output=True,
+            timeout=5
+        )
+    except Exception:
+        # Fallback: at least try to kill the parent
+        try:
+            os.kill(pid, 9)
+        except Exception:
+            pass
+
+
 # Thread pool for running subprocess (Windows compatibility)
-_executor = ThreadPoolExecutor(max_workers=4)
+# IMPORTANT: This must be >= the semaphore limit in telemetry_service.py (currently 25)
+# plus headroom for other concurrent operations (firewall, user mgmt, etc.)
+# Old value was 4 — which was the REAL bottleneck causing telemetry gaps.
+_executor = ThreadPoolExecutor(max_workers=30)
 
 
 def _run_powershell_sync(
@@ -686,3 +717,244 @@ async def execute_certificate_check(vm_ip: str, vm_admin_username: str, vm_admin
         
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(_executor, _run_certificate_check_sync, str(script_path), vm_ip, vm_admin_username, vm_admin_password, 60)
+
+# ===========================================
+# SERVICE MANAGEMENT FUNCTIONS
+# ===========================================
+
+def _run_service_management_sync(
+    script_path: str,
+    action: str,
+    vm_ip: str,
+    admin_user: str,
+    admin_password: str,
+    service_name: str = "",
+    timeout: int = 60
+) -> dict:
+    """Synchronous execution of manage_services.ps1."""
+    cmd = [
+        "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path,
+        "-action", action, "-vm_ip", vm_ip, "-admin_user", admin_user
+    ]
+
+    if service_name:
+        cmd.extend(["-service_name", service_name])
+
+    try:
+        process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)
+        admin_input = (admin_password + "\n").encode("utf-8")
+        try:
+            stdout, stderr = process.communicate(input=admin_input, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            return {"success": False, "message": f"Operation timed out after {timeout} seconds on {vm_ip}"}
+
+        stdout_text = stdout.decode("utf-8", errors="replace").strip() if stdout else ""
+        stderr_text = stderr.decode("utf-8", errors="replace").strip() if stderr else ""
+
+        try:
+            start = stdout_text.find('{')
+            end = stdout_text.rfind('}') + 1
+            if start != -1 and end > start:
+                return json.loads(stdout_text[start:end])
+            return {"success": False, "message": stderr_text or stdout_text}
+        except json.JSONDecodeError:
+            return {"success": False, "message": f"Failed to parse script output: {stdout_text[:200]}"}
+
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+async def execute_service_management(action: str, vm_ip: str, vm_admin_username: str, vm_admin_password: str, service_name: str = "", timeout: int = 60) -> dict:
+    script_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "manage_services.ps1"
+    if not script_path.exists():
+        return {"success": False, "message": f"Script not found: {script_path}"}
+        
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        _executor, _run_service_management_sync, str(script_path), action, vm_ip, vm_admin_username, vm_admin_password, service_name, timeout
+    )
+
+# ===========================================
+# HEALTH DASHBOARD FUNCTIONS
+# ===========================================
+
+def _run_health_telemetry_sync(
+    script_path: str,
+    vm_ip: str,
+    admin_user: str,
+    admin_password: str,
+    timeout: int = 30
+) -> dict:
+    """
+    Synchronous execution of get_vm_health.ps1.
+
+    IMPORTANT: On timeout, we kill the ENTIRE process tree (not just parent)
+    using taskkill /T /F. This ensures remote WinRM shells are properly
+    closed and don't leak. Without this, shells accumulate on the remote VM
+    until MaxShellsPerUser is hit, after which ALL connections fail.
+    """
+    cmd = [
+        "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path,
+        "-vm_ip", vm_ip, "-admin_user", admin_user
+    ]
+
+    process = None
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=False,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,  # isolate process tree
+        )
+        admin_input = (admin_password + "\n").encode("utf-8")
+        try:
+            stdout, stderr = process.communicate(input=admin_input, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            # CRITICAL: Kill entire process tree, not just parent!
+            # This prevents remote WinRM shell leaks that cause
+            # "maximum concurrent shells exceeded" errors.
+            _kill_process_tree(process.pid)
+            try:
+                process.wait(timeout=5)  # wait for cleanup
+            except Exception:
+                pass
+            return {"success": False, "message": f"Telemetry timed out after {timeout} seconds on {vm_ip}"}
+
+        stdout_text = stdout.decode("utf-8", errors="replace").strip() if stdout else ""
+        stderr_text = stderr.decode("utf-8", errors="replace").strip() if stderr else ""
+
+        try:
+            start = stdout_text.find('{')
+            end = stdout_text.rfind('}') + 1
+            if start != -1 and end > start:
+                return json.loads(stdout_text[start:end])
+            return {"success": False, "message": stderr_text or stdout_text}
+        except json.JSONDecodeError:
+            return {"success": False, "message": f"Failed to parse telemetry output: {stdout_text[:200]}"}
+
+    except Exception as e:
+        # If process was created but we hit an unexpected error, clean up
+        if process and process.poll() is None:
+            _kill_process_tree(process.pid)
+        return {"success": False, "message": str(e)}
+
+async def execute_health_telemetry(vm_ip: str, vm_admin_username: str, vm_admin_password: str, timeout: int = 30) -> dict:
+    # Timeout 30s: The PS script legitimately needs 5-10s (Get-Counter takes 2s,
+    # WinRM connection setup 3-5s, CIM queries 2-3s). Under network load, 20s was
+    # too tight and caused unnecessary timeouts → leaked shells → cascading failures.
+    script_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "get_vm_health.ps1"
+    if not script_path.exists():
+        return {"success": False, "message": f"Script not found: {script_path}"}
+        
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        _executor, _run_health_telemetry_sync, str(script_path), vm_ip, vm_admin_username, vm_admin_password, timeout
+    )
+
+
+async def execute_telemetry_lite(vm_ip: str, vm_admin_username: str, vm_admin_password: str, timeout: int = 25) -> dict:
+    """
+    LIGHTWEIGHT telemetry — used by the background collection loop.
+
+    Uses get_vm_telemetry_lite.ps1 which collects ONLY CPU% + RAM% + disk space.
+    Completes in 2-3 seconds instead of 15-25 seconds (no Get-Counter, no process
+    enumeration, no performance counters, no active user queries).
+
+    The heavy execute_health_telemetry() is still used for the live dashboard
+    when an admin is actively watching a specific VM.
+
+    Timeout is 15s (generous for a 2-3s script, accounts for WinRM overhead).
+    """
+    script_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "get_vm_telemetry_lite.ps1"
+    if not script_path.exists():
+        # Fallback to heavy script if lite doesn't exist
+        return await execute_health_telemetry(vm_ip, vm_admin_username, vm_admin_password, timeout=30)
+
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        _executor, _run_health_telemetry_sync, str(script_path), vm_ip, vm_admin_username, vm_admin_password, timeout
+    )
+
+# ===========================================
+# VM POWER CONTROLS
+# ===========================================
+
+def _run_power_action_sync(script_path: str, vm_ip: str, admin_user: str, admin_password: str, action: str, timeout: int = 60) -> dict:
+    cmd = [
+        "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path,
+        "-vm_ip", vm_ip, "-admin_user", admin_user, "-action", action
+    ]
+    try:
+        process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)
+        admin_input = (admin_password + "\n").encode("utf-8")
+        try:
+            stdout, stderr = process.communicate(input=admin_input, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            return {"success": False, "message": f"Power action timed out after {timeout} seconds on {vm_ip}"}
+        
+        stdout_text = stdout.decode("utf-8", errors="replace").strip() if stdout else ""
+        stderr_text = stderr.decode("utf-8", errors="replace").strip() if stderr else ""
+        
+        try:
+            start = stdout_text.find('{')
+            end = stdout_text.rfind('}') + 1
+            if start != -1 and end > start:
+                return json.loads(stdout_text[start:end])
+            return {"success": False, "message": stderr_text or stdout_text}
+        except json.JSONDecodeError:
+            return {"success": False, "message": f"Failed to parse script output: {stdout_text[:200]}"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+async def execute_power_action(vm_ip: str, vm_admin_username: str, vm_admin_password: str, action: str, timeout: int = 60) -> dict:
+    script_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "manage_vm_power.ps1"
+    if not script_path.exists():
+        return {"success": False, "message": f"Script not found: {script_path}"}
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        _executor, _run_power_action_sync, str(script_path), vm_ip, vm_admin_username, vm_admin_password, action, timeout
+    )
+
+# ===========================================
+# RDP SESSION MANAGEMENT
+# ===========================================
+
+def _run_rdp_action_sync(script_path: str, vm_ip: str, admin_user: str, admin_password: str, action: str, session_id: int, timeout: int = 60) -> dict:
+    cmd = [
+        "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path,
+        "-vm_ip", vm_ip, "-admin_user", admin_user, "-action", action, "-session_id", str(session_id)
+    ]
+    try:
+        process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)
+        admin_input = (admin_password + "\n").encode("utf-8")
+        try:
+            stdout, stderr = process.communicate(input=admin_input, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            return {"success": False, "message": f"Session action timed out after {timeout} seconds"}
+        
+        stdout_text = stdout.decode("utf-8", errors="replace").strip() if stdout else ""
+        stderr_text = stderr.decode("utf-8", errors="replace").strip() if stderr else ""
+        
+        try:
+            start = stdout_text.find('{')
+            end = stdout_text.rfind('}') + 1
+            if start != -1 and end > start:
+                return json.loads(stdout_text[start:end])
+            return {"success": False, "message": stderr_text or stdout_text}
+        except json.JSONDecodeError:
+            return {"success": False, "message": f"Failed to parse script output: {stdout_text[:200]}"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+async def execute_rdp_action(vm_ip: str, vm_admin_username: str, vm_admin_password: str, action: str, session_id: int, timeout: int = 60) -> dict:
+    script_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "manage_rdp_sessions.ps1"
+    if not script_path.exists():
+        return {"success": False, "message": f"Script not found: {script_path}"}
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        _executor, _run_rdp_action_sync, str(script_path), vm_ip, vm_admin_username, vm_admin_password, action, session_id, timeout
+    )

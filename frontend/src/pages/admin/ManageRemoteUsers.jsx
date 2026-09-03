@@ -7,7 +7,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { adminAPI, remoteUserAPI } from '../../services/api';
-import { Card, Button, Input, Alert } from '../../components/ui';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Alert } from '@/components/ui/Alert';
+import { cn } from '@/lib/utils';
 import VMHealthBadge from '../../components/VMHealthBadge';
 import {
   UserPlus,
@@ -68,48 +72,44 @@ const VMSelector = ({
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <label className="block text-sm font-semibold text-gray-700 mb-1.5">{label}</label>
+      <label className="block text-sm font-medium leading-none text-foreground mb-2">{label}</label>
 
       {/* Dropdown Toggle Button */}
-      <button
-        type="button"
+      <Button
+        variant="outline"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between px-4 py-2.5 bg-white border rounded-xl shadow-sm transition-all duration-200 text-left hover:border-primary-400 focus:ring-2 focus:ring-primary-500/20 ${isOpen ? 'border-primary-500 ring-2 ring-primary-500/10' : 'border-gray-300'
-          }`}
+        className="w-full flex items-center justify-between font-normal text-left shadow-sm h-10 overflow-hidden"
       >
         <div className="flex items-center gap-2 overflow-hidden">
-          <Server size={18} className={selected.length > 0 ? 'text-primary-500' : 'text-gray-400'} />
-          <span className={`truncate text-sm font-medium ${selected.length > 0 ? 'text-gray-900' : 'text-gray-500'}`}>
+          <Server className={cn("h-4 w-4 shrink-0", selected.length > 0 ? "text-primary" : "text-muted-foreground")} />
+          <span className={cn("truncate font-medium", selected.length > 0 ? "text-foreground" : "text-muted-foreground")}>
             {selected.length === 0
               ? 'Select Target Servers'
               : `${selected.length} Server${selected.length > 1 ? 's' : ''} Selected`
             }
           </span>
         </div>
-        <ChevronDown
-          size={18}
-          className={`text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
-        />
-      </button>
+        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform opacity-50", isOpen && "rotate-180")} />
+      </Button>
 
       {/* Floating Dropdown Menu */}
       {isOpen && (
-        <div className="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-          <div className="p-3 border-b border-gray-100 bg-gray-50/50 rounded-t-2xl">
+        <div className="absolute z-50 mt-1 w-full bg-popover border border-border rounded-lg shadow-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="p-2.5 border-b border-border bg-muted/50 rounded-t-lg">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Target Selection</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Target Selection</span>
               <div className="flex gap-4">
                 <button
                   type="button"
                   onClick={() => selectAllVMs(setSelected)}
-                  className="text-[11px] text-primary-600 hover:text-primary-700 font-bold uppercase transition-colors"
+                  className="text-[11px] text-primary hover:text-primary/80 font-bold uppercase transition-colors"
                 >
                   All
                 </button>
                 <button
                   type="button"
                   onClick={() => deselectAllVMs(setSelected)}
-                  className="text-[11px] text-gray-400 hover:text-gray-600 font-bold uppercase transition-colors"
+                  className="text-[11px] text-muted-foreground hover:text-foreground font-bold uppercase transition-colors"
                 >
                   None
                 </button>
@@ -118,20 +118,20 @@ const VMSelector = ({
 
             {/* Search Bar within Dropdown */}
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 autoFocus
                 type="text"
                 placeholder="Filter by name or IP..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-8 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                className="w-full pl-8 pr-8 py-1.5 text-sm border border-input rounded-md bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
                 onClick={(e) => e.stopPropagation()}
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-300 hover:text-gray-500"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
                 >
                   <X size={12} />
                 </button>
@@ -142,12 +142,12 @@ const VMSelector = ({
           {/* List */}
           <div className="max-h-64 overflow-y-auto custom-scrollbar p-1">
             {loadingVMs ? (
-              <div className="p-8 text-center text-gray-500">
-                <Loader2 size={24} className="animate-spin mx-auto mb-2 text-primary-500" />
+              <div className="p-8 text-center text-muted-foreground">
+                <Loader2 size={24} className="animate-spin mx-auto mb-2 text-primary" />
                 <span className="text-xs font-semibold">Scanning Network...</span>
               </div>
             ) : filteredVMs.length === 0 ? (
-              <div className="p-8 text-center text-gray-400">
+              <div className="p-8 text-center text-muted-foreground">
                 <span className="text-sm italic">No matching servers found</span>
               </div>
             ) : (
@@ -158,41 +158,42 @@ const VMSelector = ({
                     e.stopPropagation();
                     toggleVM(vm.id, setSelected);
                   }}
-                  className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-xl mb-1 last:mb-0 transition-all ${selected.includes(vm.id)
-                    ? 'bg-primary-50/50 text-primary-700'
-                    : 'hover:bg-gray-50 text-gray-700'
-                    }`}
+                  className={cn("flex items-center gap-3 p-2.5 cursor-pointer rounded-md mb-1 last:mb-0 transition-colors text-sm", selected.includes(vm.id)
+                    ? "bg-accent text-accent-foreground"
+                    : "hover:bg-muted/50 text-foreground"
+                  )}
                 >
-                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${selected.includes(vm.id)
-                    ? 'bg-primary-600 border-primary-600 text-white'
-                    : 'bg-white border-gray-300'
-                    }`}>
-                    {selected.includes(vm.id) && <Check size={14} strokeWidth={4} />}
+                  <div className={cn("w-4 h-4 rounded-sm border flex items-center justify-center transition-colors shrink-0 outline-none", selected.includes(vm.id)
+                    ? "bg-primary border-primary text-primary-foreground"
+                    : "border-primary shrink-0 opacity-50"
+                  )}>
+                    {selected.includes(vm.id) && <Check size={12} strokeWidth={4} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm truncate">{vm.name}</span>
+                      <span className="font-medium text-sm truncate">{vm.name}</span>
                       <VMHealthBadge status={vm.health_status || 'unknown'} />
                     </div>
-                    <span className="text-[10px] font-mono opacity-60 uppercase">{vm.ip_address}</span>
+                    <span className="text-[10px] font-mono text-muted-foreground opacity-80 uppercase">{vm.ip_address}</span>
                   </div>
                 </div>
               ))
             )}
           </div>
 
-          <div className="p-3 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl flex justify-between items-center text-[11px] font-medium text-gray-400">
+          <div className="p-2.5 border-t border-border bg-muted/50 flex justify-between items-center text-[11px] font-medium text-muted-foreground rounded-b-lg">
             <span>Showing {filteredVMs.length} Servers</span>
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsOpen(false);
               }}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-600 px-3 py-1 rounded-md transition-colors"
+              className="h-7 px-3 text-xs"
             >
               Close
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -200,19 +201,19 @@ const VMSelector = ({
       {selected.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {vms.filter(v => selected.includes(v.id)).slice(0, 5).map(v => (
-            <span key={v.id} className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-primary-100/50 text-primary-700 rounded-md text-[10px] font-bold">
+            <span key={v.id} className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-secondary text-secondary-foreground rounded-md text-[10px] font-bold">
               {v.name}
               <button
                 type="button"
                 onClick={() => toggleVM(v.id, setSelected)}
-                className="hover:text-primary-900"
+                className="hover:text-foreground opacity-70 hover:opacity-100"
               >
                 <X size={10} />
               </button>
             </span>
           ))}
           {selected.length > 5 && (
-            <span className="text-[10px] text-gray-400 font-bold self-center">+ {selected.length - 5} more</span>
+            <span className="text-[10px] text-muted-foreground font-bold self-center">+ {selected.length - 5} more</span>
           )}
         </div>
       )}
@@ -588,9 +589,9 @@ const ManageRemoteUsers = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Remote User Management</h1>
-        <p className="text-gray-500 mt-1">
-          Create and manage local user accounts on your remote Windows servers
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Remote User Management</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Create and manage local user accounts on remote Windows servers
         </p>
       </div>
 
@@ -635,7 +636,7 @@ const ManageRemoteUsers = () => {
       {/* =============================== */}
       {activeTab === 'create' && (
         <Card>
-          <form onSubmit={handleCreateUser} className="p-6 space-y-5">
+          <form noValidate onSubmit={handleCreateUser} className="p-6 space-y-5">
             <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
               <UserPlus size={20} className="text-primary-600" />
               Create Remote User
@@ -899,7 +900,7 @@ const ManageRemoteUsers = () => {
       {/* =============================== */}
       {activeTab === 'bulk-reset' && (
         <Card className="bg-white/50 backdrop-blur-sm border-gray-200 shadow-sm">
-          <form onSubmit={handleBulkReset} className="p-8 max-w-2xl mx-auto space-y-8">
+          <form noValidate onSubmit={handleBulkReset} className="p-8 max-w-2xl mx-auto space-y-8">
             <div className="text-center space-y-2">
               <h2 className="text-2xl font-bold text-gray-900 flex items-center justify-center gap-3">
                 <Key size={28} className="text-primary-600" />
@@ -922,75 +923,73 @@ const ManageRemoteUsers = () => {
               />
 
               {/* Target User */}
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700 ml-1">Remote Username</label>
-                <div className="relative">
-                  <Input
-                    value={bulkUsername}
-                    onChange={(e) => {
-                      setBulkUsername(e.target.value);
-                      setResults(null);
-                    }}
-                    placeholder="Enter remote username (e.g. rahul.sharma)"
-                    required
-                  />
-                </div>
+              <div className="pt-2">
+                <Input
+                  label="Remote Username *"
+                  value={bulkUsername}
+                  onChange={(e) => {
+                    setBulkUsername(e.target.value);
+                    setResults(null);
+                  }}
+                  placeholder="e.g. rahul.sharma"
+                  required
+                />
               </div>
 
               {/* New Password */}
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700 ml-1">New Remote Password</label>
+              <div className="space-y-1.5 pb-2">
+                <label className="text-sm font-medium leading-none text-foreground">New Remote Password *</label>
                 <div className="flex gap-2">
                   <div className="flex-1 relative">
                     <input
                       type={showBulkPassword ? 'text' : 'password'}
                       value={bulkPassword}
                       onChange={(e) => setBulkPassword(e.target.value)}
-                      placeholder="Enter or generate password"
+                      placeholder="Enter or generate new password"
                       required
-                      className="w-full pl-4 pr-20 py-3 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all font-mono"
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 pr-14 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono"
                     />
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1">
                       <button
                         type="button"
                         onClick={() => setShowBulkPassword(!showBulkPassword)}
-                        className="p-1.5 text-gray-400 hover:text-gray-600"
+                        className="p-1 text-muted-foreground hover:text-foreground"
                       >
-                        {showBulkPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {showBulkPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                       {bulkPassword && (
                         <button
                           type="button"
                           onClick={handleCopyBulkPassword}
-                          className="p-1.5 text-gray-400 hover:text-gray-600"
+                          className="p-1 text-muted-foreground hover:text-foreground"
                         >
-                          {copiedBulkPassword ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+                          {copiedBulkPassword ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                         </button>
                       )}
                     </div>
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
                     onClick={handleGenerateBulkPassword}
-                    className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold rounded-xl transition-all flex items-center gap-2"
+                    className="px-4 shadow-sm h-9"
                   >
-                    <RefreshCw size={16} />
+                    <RefreshCw size={14} className="mr-1.5" />
                     Auto
-                  </button>
+                  </Button>
                 </div>
               </div>
-            </div>
 
-            <div className="pt-4">
-              <Button 
-                type="submit" 
-                variant="primary" 
-                className="w-full py-4 rounded-xl text-base font-bold shadow-lg shadow-primary-200 transition-all active:scale-[0.98]"
-                loading={bulkResetting} 
-                disabled={bulkResetting || !bulkUsername || !bulkPassword}
-              >
-                {bulkResetting ? 'Resetting on all servers...' : 'Reset Password'}
-              </Button>
+              <div className="pt-4 border-t border-border flex justify-end">
+                <Button 
+                  type="submit" 
+                  className="w-full sm:w-auto px-8"
+                  loading={bulkResetting} 
+                  disabled={bulkResetting || !bulkUsername || !bulkPassword}
+                >
+                  {bulkResetting ? 'Resetting on all servers...' : 'Execute Password Reset'}
+                </Button>
+              </div>
             </div>
 
             <ResultsPanel />

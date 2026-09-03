@@ -430,6 +430,34 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_user
 
 
 # ===========================================
+# VERIFY PASSWORD ENDPOINT (Security Confirmation)
+# ===========================================
+from app.schemas.auth import PasswordVerifyRequest
+
+@router.post("/verify-password", response_model=MessageResponse)
+async def verify_password_endpoint(
+    request: Request,
+    verify_data: PasswordVerifyRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Verify the current user's password.
+    Used before critical actions like VM reboot or shutdown.
+    """
+    users = get_users_collection()
+    user = await users.find_one({"id": current_user["sub"]})
+
+    if not user or not verify_password(verify_data.password, user["password_hash"]):
+        print(f"⚠️ Failed password verification for user: {current_user.get('username')} from IP: {get_client_ip(request)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password"
+        )
+
+    return MessageResponse(message="Password verified")
+
+
+# ===========================================
 # FORGOT PASSWORD ENDPOINT (Rate Limited: 3/minute)
 # ===========================================
 @router.post("/forgot-password", response_model=MessageResponse)

@@ -2,7 +2,10 @@
 """
 FastAPI Application Entry Point
 
-Updated: Added scheduler startup/shutdown
+Fixes Applied:
+  Fix 1 + 5 - Telemetry loop (run→wait→run) started here on boot.
+              Fires first collection 5s after startup (not 30s).
+  Fix 6      - Nightly downsampling job registered in scheduler.
 """
 
 from fastapi import FastAPI, Request
@@ -15,6 +18,9 @@ from app.config import settings
 from app.database import connect_to_mongodb, close_mongodb_connection
 from app.routers import auth, admin, vms, password, notifications, captcha, firewall, certificates
 from app.routers import user_management as user_mgmt_router
+from app.routers import services as services_router
+from app.routers import vm_health as vm_health_router
+from app.routers import terminal as terminal_router
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -32,11 +38,18 @@ async def lifespan(app: FastAPI):
     # Connect to MongoDB
     await connect_to_mongodb()
     
-    # Start background scheduler
+    # Start APScheduler (health check, password expiry, nightly downsampling)
     try:
-        from app.scheduler import start_scheduler
+        from app.scheduler import start_scheduler, start_telemetry_loop
         start_scheduler()
-        print("✅ Background scheduler started")
+        print("✅ Background scheduler started (health check, expiry, downsampling)")
+
+        # Fix 1 + Fix 5: Start the loop-based telemetry collector.
+        # Fires first collection 5s after startup, then waits 30s after each run.
+        # This NEVER skips a cycle even if collection takes longer than 30s.
+        start_telemetry_loop()
+        print("✅ Telemetry collection loop started (first run in 5s)")
+
     except ImportError as e:
         print(f"⚠️ Scheduler module not found: {e}")
         print("   Background jobs will not run.")
@@ -49,13 +62,14 @@ async def lifespan(app: FastAPI):
     # ============ SHUTDOWN ============
     print("🛑 Shutting down...")
     
-    # Stop background scheduler
+    # Stop telemetry loop and APScheduler
     try:
-        from app.scheduler import shutdown_scheduler
-        shutdown_scheduler()
-        print("✅ Background scheduler stopped")
+        from app.scheduler import shutdown_scheduler, stop_telemetry_loop
+        stop_telemetry_loop()     # Cancel the asyncio telemetry loop task
+        shutdown_scheduler()      # Stop APScheduler gracefully
+        print("✅ Background scheduler and telemetry loop stopped")
     except ImportError:
-        pass  # Scheduler wasn't loaded
+        pass
     except Exception as e:
         print(f"❌ Error stopping scheduler: {e}")
         logger.error(f"Scheduler shutdown failed: {e}", exc_info=True)
@@ -89,6 +103,10 @@ origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
 origins.extend([
     "http://localhost:5173",   # Vite default
     "http://127.0.0.1:5173",   # Vite alternative
+    "http://localhost:5174",   # Vite fallback 1
+    "http://127.0.0.1:5174",   # Vite fallback 1
+    "http://localhost:5175",   # Vite fallback 2
+    "http://127.0.0.1:5175",   # Vite fallback 2
     "http://localhost:3000",   # React default
     "http://127.0.0.1:3000",   # React alternative
 ])
@@ -101,6 +119,7 @@ print(f"📡 CORS Origins: {origins}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
@@ -135,6 +154,56 @@ app.include_router(certificates.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
 app.include_router(captcha.router, prefix="/api")
 app.include_router(user_mgmt_router.router, prefix="/api")
+app.include_router(services_router.router, prefix="/api")
+app.include_router(vm_health_router.router, prefix="/api")
+app.include_router(terminal_router.router, prefix="/api")
+
+
+# ===========================================
+# TELEMETRY LOOP STATUS ENDPOINT
+# ===========================================
+from fastapi import Depends as _Depends
+from app.middleware.auth import require_admin as _require_admin
+
+@app.get("/api/admin/telemetry-status")
+async def telemetry_loop_status(current_user: dict = _Depends(_require_admin)):
+    """
+    Standalone debug endpoint — no vm_id required.
+    Shows live telemetry loop health: cycle count, duration, VM errors.
+    Open: http://127.0.0.1:8001/api/admin/telemetry-status
+    (Must be logged in as admin — bearer token required, use /api/docs to test)
+    """
+    from app.services.telemetry_service import _loop_stats
+    from app.database import get_database
+
+    db = get_database()
+
+    # Count total raw telemetry records
+    total_raw = await db.telemetry.count_documents({})
+    total_compressed = await db.telemetry_compressed.count_documents({})
+
+    # Per-VM summary: how many records in last hour per VM
+    from datetime import datetime, timedelta
+    one_hour_ago = datetime.now() - timedelta(hours=1)
+    pipeline = [
+        {"$match": {"timestamp": {"$gte": one_hour_ago}}},
+        {"$group": {"_id": "$vm_id", "count": {"$sum": 1}}},
+        {"$sort": {"count": 1}}  # worst first
+    ]
+    per_vm = await db.telemetry.aggregate(pipeline).to_list(length=None)
+
+    return {
+        "loop": {**_loop_stats},
+        "db": {
+            "total_raw_records":        total_raw,
+            "total_compressed_records": total_compressed,
+        },
+        "per_vm_last_1h": [
+            {"vm_id": r["_id"], "records": r["count"]} for r in per_vm
+        ],
+        "hint": "Each VM should have ~60-70 records/hour. Less = gaps in graph."
+    }
+
 
 
 # ===========================================

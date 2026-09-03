@@ -445,7 +445,7 @@ async def notify_admins_vm_health_change(
 
 async def get_user_notifications(
     user_id: str,
-    limit: int = 20,
+    limit: int = 50,
     offset: int = 0,
     unread_only: bool = False
 ) -> Dict[str, Any]:
@@ -454,7 +454,7 @@ async def get_user_notifications(
 
     Args:
         user_id: User's ID
-        limit: Max notifications to return
+        limit: Max notifications to return (0 = no limit)
         offset: Skip count for pagination
         unread_only: If True, only return unread notifications
 
@@ -478,8 +478,10 @@ async def get_user_notifications(
     })
 
     # Get notifications (newest first)
-    cursor = collection.find(query).sort("created_at", -1).skip(offset).limit(limit)
-    notifications = await cursor.to_list(length=limit)
+    cursor = collection.find(query).sort("created_at", -1).skip(offset)
+    if limit > 0:
+        cursor = cursor.limit(limit)
+    notifications = await cursor.to_list(length=limit if limit > 0 else None)
 
     # Process notifications
     result = []
