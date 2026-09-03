@@ -1,4 +1,4 @@
-# 🔐 Keystone
+#  Keystone
 
 > Self-hosted server governance & credential management platform for on-prem environments without Active Directory.
 
